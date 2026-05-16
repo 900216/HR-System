@@ -1975,6 +1975,25 @@ body { font-family: "Microsoft JhengHei", "微軟正黑體", -apple-system, sans
     </div>
 </div>
 
+<!-- 🖋️ 大畫面電子簽名 Modal -->
+<div id="signatureModal" class="modal-overlay hidden">
+    <div class="modal-content" style="max-width:96vw; width:96vw; max-height:96vh; padding:14px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+            <strong style="font-size:16px;" id="signatureModalTitle">🖋️ 電子簽名</strong>
+            <button onclick="closeModal('signatureModal')" style="background:none; border:none; font-size:22px; cursor:pointer; color:#6b7280;">✕</button>
+        </div>
+        <div style="background:#fef3c7; padding:10px; border-radius:4px; margin-bottom:10px; font-size:12px; color:#92400e;">
+            💡 請在白色區域使用<strong>手指、手寫筆或滑鼠</strong>簽名。完成後系統會自動加上時間戳。
+        </div>
+        <canvas id="bigSigCanvas" width="1400" height="600" style="border:3px solid #d97706; background:white; touch-action:none; width:100%; height:60vh; border-radius:6px; display:block; cursor:crosshair;"></canvas>
+        <div style="text-align:center; margin-top:14px;">
+            <button class="btn-confirm" style="padding:12px 28px; font-size:15px; font-weight:bold;" onclick="finishBigSignature()">✅ 完成簽名</button>
+            <button class="btn-secondary" style="margin-left:8px; padding:12px 28px; font-size:15px;" onclick="clearBigSignature()">🗑️ 清除重簽</button>
+            <button class="btn-secondary" style="margin-left:8px; padding:12px 28px; font-size:15px;" onclick="closeModal('signatureModal')">取消</button>
+        </div>
+    </div>
+</div>
+
 <!-- 🏖️ 假別額度編輯 Modal -->
 <div id="leaveBalanceModal" class="modal-overlay hidden">
     <div class="modal-content" style="max-width:560px; max-height:92vh; overflow-y:auto;">
@@ -3856,6 +3875,9 @@ function initCashReport() {
     
     // 載入資料
     loadCashReport();
+    
+    // 🚀 背景預載入 Tesseract OCR 引擎（加速首次 OCR）
+    setTimeout(preloadTesseract, 2000);
 }
 
 function renderCRRegisterTable() {
@@ -4260,7 +4282,6 @@ function parseOcrText(text) {
     var lines = text.split(/\n/);
     var data = {};
     
-    // ⚠️ 代碼按長度排序（長的先）：避免 104 誤匹配 104A 開頭
     var allCodes = [
         '104A','104B','105A','105B','106A','106B','111A','111B','111D','111E',
         '803A','803B','803C',
@@ -4272,19 +4293,21 @@ function parseOcrText(text) {
         '801','802','803','804','805','806'
     ];
     
+    var registerCodes = ['101','102','103','104','104A','104B','105A','105B','106A','106B',
+                         '107','108','109','110','111','112','113','116','117','120'];
+    
     for (var i = 0; i < lines.length; i++) {
         var origLine = lines[i];
         if (!origLine || origLine.length < 3) continue;
         
-        // 把 OCR 常見錯誤先修一下
-        var line = origLine.replace(/[Oo]/g, '0').replace(/[Il]/g, '1');
+        // OCR 常見錯誤修正
+        var line = origLine.replace(/[Oo](?=\d)/g, '0').replace(/[Il](?=\d)/g, '1');
         
-        // 找這行是否含某個代碼
+        // 找此行的代碼
         var matchedCode = null;
         var codePos = -1;
         for (var j = 0; j < allCodes.length; j++) {
             var code = allCodes[j];
-            // 找這個代碼在哪個位置（前後必須是非字母數字）
             var idx = line.search(new RegExp('(?:^|[^A-Za-z0-9])' + code + '(?:[^A-Za-z0-9]|$)'));
             if (idx !== -1) {
                 matchedCode = code;
@@ -4294,44 +4317,94 @@ function parseOcrText(text) {
         }
         
         if (!matchedCode) continue;
-        if (data[matchedCode]) continue; // 已經處理過這個代碼
+        if (data[matchedCode]) continue;
         
-        // 取代碼之後的內容找數字
         var afterCode = line.substring(codePos);
-        // 找這之後的所有數字（含負數、千分位逗號）
-        var numMatches = afterCode.match(/-?\d{1,3}(?:[,，]\d{3})+|-?\d+/g);
+        var numMatches = afterCode.match(/-?\d{1,3}(?:[,，]\d{3})+|-?\d{1,9}/g);
         if (!numMatches || numMatches.length === 0) continue;
         
         var nums = [];
+        var seenCodeOnce = false;
         for (var k = 0; k < numMatches.length; k++) {
             var raw = numMatches[k].replace(/[,，]/g, '');
             var n = parseFloat(raw);
             if (isNaN(n)) continue;
-            // 跳過代碼本身（純 3 位數字且等於代碼）
-            if (k === 0 && String(n) === matchedCode.replace(/[A-Z]/g, '')) continue;
+            // 第一次遇到代碼本身時跳過
+            if (!seenCodeOnce && String(n) === matchedCode.replace(/[A-Z]/g, '')) {
+                seenCodeOnce = true;
+                continue;
+            }
             nums.push(n);
         }
         
-        if (nums.length > 0) {
-            data[matchedCode] = { nums: nums, rawLine: origLine };
+        if (nums.length === 0) continue;
+        
+        // 🔑 關鍵改進：收銀機行取「最後 4 個」數字（最可靠）
+        if (registerCodes.indexOf(matchedCode) !== -1 && nums.length >= 4) {
+            nums = nums.slice(-4);  // 取末尾 4 個
         }
+        
+        data[matchedCode] = { nums: nums, rawLine: origLine };
     }
     return data;
 }
 
-// ============= 🖋️ 電子簽名 =============
+// 🚀 預載入 Tesseract（加快首次 OCR）
+function preloadTesseract() {
+    if (window._tesseractPreloaded) return;
+    window._tesseractPreloaded = true;
+    
+    if (typeof Tesseract === 'undefined') return;
+    
+    // 用一個極小的圖片預載語言包
+    var canvas = document.createElement('canvas');
+    canvas.width = 50;
+    canvas.height = 20;
+    var ctx = canvas.getContext('2d');
+    ctx.fillStyle = 'white';
+    ctx.fillRect(0, 0, 50, 20);
+    ctx.fillStyle = 'black';
+    ctx.font = '14px sans-serif';
+    ctx.fillText('123', 5, 15);
+    
+    canvas.toBlob(function(blob) {
+        try {
+            Tesseract.recognize(blob, 'chi_tra+eng', { logger: function(){} })
+                .then(function() {
+                    console.log('Tesseract 預載入完成');
+                })
+                .catch(function() {});
+        } catch(e) {}
+    });
+}
+
+// ============= 🖋️ 電子簽名（大畫面 Modal） =============
 var _signaturePads = {};
+var _currentSigRole = null;
 
 function renderSignatureCanvas(role) {
     var container = document.getElementById('sigContainer_' + role);
     if (!container) return;
-    container.innerHTML = '<canvas id="sigCanvas_' + role + '" width="800" height="220" style="border:2px dashed #999; background:white; touch-action:none; width:100%; max-width:100%; height:220px; border-radius:4px; display:block; cursor:crosshair;"></canvas>' +
-        '<div style="margin-top:8px;">' +
-        '<button class="btn-confirm" style="padding:8px 16px;font-size:13px;" onclick="confirmSignature(\'' + role + '\')">✅ 確認簽名</button>' +
-        '<button class="btn-secondary" style="margin-left:6px; padding:8px 16px;font-size:13px;" onclick="clearSignature(\'' + role + '\')">🗑️ 清除</button>' +
-        '</div>' +
-        '<div style="margin-top:4px; font-size:11px; color:#6b7280;">💡 請用手指或滑鼠在框內簽名（簽名區域已加大）</div>';
-    setTimeout(function() { initSignaturePad('sigCanvas_' + role); }, 50);
+    container.innerHTML = 
+        '<div onclick="openSignatureModal(\'' + role + '\')" ' +
+            'style="background:white; border:3px dashed #999; min-height:100px; ' +
+            'display:flex; align-items:center; justify-content:center; flex-direction:column; ' +
+            'cursor:pointer; border-radius:8px; color:#6b7280; ' +
+            'font-size:15px; padding:18px; transition:all 0.2s;" ' +
+            'onmouseover="this.style.borderColor=\'#d97706\'; this.style.color=\'#d97706\'; this.style.background=\'#fefce8\';" ' +
+            'onmouseout="this.style.borderColor=\'#999\'; this.style.color=\'#6b7280\'; this.style.background=\'white\';">' +
+            '<div style="font-size:32px; margin-bottom:6px;">✍️</div>' +
+            '<strong>點此開啟大畫面簽名</strong>' +
+            '<div style="font-size:11px; margin-top:4px;">適合手機 / 平板手寫</div>' +
+        '</div>';
+}
+
+function openSignatureModal(role) {
+    _currentSigRole = role;
+    var roleName = role === 'manager' ? '店經理' : '會計人員';
+    document.getElementById('signatureModalTitle').textContent = '🖋️ ' + roleName + ' 電子簽名';
+    document.getElementById('signatureModal').classList.remove('hidden');
+    setTimeout(function() { initSignaturePad('bigSigCanvas'); }, 100);
 }
 
 function initSignaturePad(canvasId) {
@@ -4342,7 +4415,6 @@ function initSignaturePad(canvasId) {
     var lastX = 0, lastY = 0;
     var hasContent = false;
     
-    // 白底
     ctx.fillStyle = '#fff';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     
@@ -4369,7 +4441,6 @@ function initSignaturePad(canvasId) {
         drawing = true;
         hasContent = true;
     }
-    
     function draw(e) {
         if (!drawing) return;
         e.preventDefault();
@@ -4378,17 +4449,14 @@ function initSignaturePad(canvasId) {
         ctx.moveTo(lastX, lastY);
         ctx.lineTo(pos.x, pos.y);
         ctx.strokeStyle = '#000';
-        ctx.lineWidth = 2.5;
+        ctx.lineWidth = 4;
         ctx.lineCap = 'round';
         ctx.lineJoin = 'round';
         ctx.stroke();
         lastX = pos.x;
         lastY = pos.y;
     }
-    
-    function end(e) {
-        drawing = false;
-    }
+    function end(e) { drawing = false; }
     
     canvas.addEventListener('mousedown', start);
     canvas.addEventListener('mousemove', draw);
@@ -4399,55 +4467,61 @@ function initSignaturePad(canvasId) {
     canvas.addEventListener('touchend', end);
     
     _signaturePads[canvasId] = {
-        canvas: canvas,
-        ctx: ctx,
+        canvas: canvas, ctx: ctx,
         hasContent: function() { return hasContent; },
         clear: function() {
             ctx.fillStyle = '#fff';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
             hasContent = false;
         },
-        toDataURL: function() {
-            return canvas.toDataURL('image/png');
-        }
+        toDataURL: function() { return canvas.toDataURL('image/png'); }
     };
 }
 
-function clearSignature(role) {
-    var pad = _signaturePads['sigCanvas_' + role];
+function clearBigSignature() {
+    var pad = _signaturePads['bigSigCanvas'];
     if (pad) pad.clear();
 }
 
-function confirmSignature(role) {
-    var pad = _signaturePads['sigCanvas_' + role];
+function finishBigSignature() {
+    var pad = _signaturePads['bigSigCanvas'];
     if (!pad || !pad.hasContent()) {
-        return alert('⚠️ 請先在框內簽名');
+        return alert('⚠️ 請先在白色區域簽名');
     }
+    if (!_currentSigRole) return;
     
     var dataUrl = pad.toDataURL();
     var now = new Date();
     var timeStr = formatDateTime(now);
     var isoTime = now.toISOString();
     
-    showSignedSignature(role, dataUrl, timeStr);
+    document.getElementById('sig_' + _currentSigRole + '_data').value = dataUrl;
+    document.getElementById('sig_' + _currentSigRole + '_time').value = isoTime;
     
-    document.getElementById('sig_' + role + '_data').value = dataUrl;
-    document.getElementById('sig_' + role + '_time').value = isoTime;
+    showSignedSignature(_currentSigRole, dataUrl, timeStr);
+    closeModal('signatureModal');
     
-    var roleName = role === 'manager' ? '店經理' : '會計人員';
+    var roleName = _currentSigRole === 'manager' ? '店經理' : '會計人員';
     showNotif('✅ ' + roleName + '簽名完成 ' + timeStr);
 }
 
+// 相容舊呼叫
+function clearSignature(role) {
+    document.getElementById('sig_' + role + '_data').value = '';
+    document.getElementById('sig_' + role + '_time').value = '';
+    renderSignatureCanvas(role);
+}
+function confirmSignature(role) { openSignatureModal(role); }
+
 function showSignedSignature(role, dataUrl, timeStr) {
     var container = document.getElementById('sigContainer_' + role);
-    var bgColor = role === 'manager' ? '#fef3c7' : '#dbeafe';
     var textColor = role === 'manager' ? '#92400e' : '#1e3a8a';
-    container.innerHTML = '<div style="background:white; padding:12px; border-radius:4px; border:2px solid ' + textColor + ';">' +
-        '<img src="' + dataUrl + '" style="max-width:100%; max-height:200px; display:block; margin:0 auto;">' +
+    container.innerHTML = '<div style="background:white; padding:12px; border-radius:6px; border:2px solid ' + textColor + ';">' +
+        '<img src="' + dataUrl + '" style="max-width:100%; max-height:160px; display:block; margin:0 auto;">' +
         '</div>' +
         '<div style="margin-top:8px; font-size:13px; color:' + textColor + '; font-weight:bold;">' +
         '✅ 已簽名於 ' + timeStr + '</div>' +
-        '<button class="btn-secondary" style="padding:6px 14px; font-size:13px; margin-top:8px;" onclick="resetSignature(\'' + role + '\')">🔄 重新簽名</button>';
+        '<button class="btn-secondary" style="padding:8px 16px; font-size:13px; margin-top:8px;" onclick="resetSignature(\'' + role + '\')">🔄 重新簽名</button>';
 }
 
 function resetSignature(role) {
