@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>考勤管理系統 Rostering System</title>
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
 body { font-family: "Microsoft JhengHei", "微軟正黑體", -apple-system, sans-serif; background: #f0f0f0; }
@@ -46,13 +47,19 @@ body { font-family: "Microsoft JhengHei", "微軟正黑體", -apple-system, sans
 
 /* 選單 */
 .system-menu { background: linear-gradient(to bottom, #6b7280, #4b5563); display: flex; border-bottom: 3px solid #d97706; flex-wrap: wrap; }
-.menu-item { padding: 10px 18px; color: white; cursor: pointer; font-size: 13px; font-weight: bold; border-right: 1px solid rgba(255,255,255,0.2); position: relative; }
+.menu-item { padding: 10px 18px; color: white; cursor: pointer; font-size: 13px; font-weight: bold; border-right: 1px solid rgba(255,255,255,0.2); position: relative; user-select: none; -webkit-tap-highlight-color: rgba(255,255,255,0.2); }
 .menu-item:hover { background: linear-gradient(to bottom, #f59e0b, #d97706); }
 .menu-item.active { background: linear-gradient(to bottom, #f59e0b, #d97706); }
-.submenu { display: none; position: absolute; top: 100%; left: 0; background: white; border: 1px solid #d97706; box-shadow: 0 4px 12px rgba(0,0,0,0.2); min-width: 180px; z-index: 50; }
-.menu-item:hover .submenu { display: block; }
-.submenu-item { padding: 10px 14px; color: #1f2937; border-bottom: 1px solid #f3f4f6; font-size: 13px; cursor: pointer; }
-.submenu-item:hover { background: #fef3c7; color: #d97706; }
+.menu-item.open { background: linear-gradient(to bottom, #f59e0b, #d97706); }
+.submenu { display: none; position: absolute; top: 100%; left: 0; background: white; border: 1px solid #d97706; box-shadow: 0 4px 12px rgba(0,0,0,0.2); min-width: 200px; z-index: 100; }
+/* 桌面版滑鼠 hover */
+@media (hover: hover) and (pointer: fine) {
+    .menu-item:hover .submenu { display: block; }
+}
+/* 點擊展開（手機 + 桌面通用） */
+.menu-item.open .submenu { display: block !important; }
+.submenu-item { padding: 12px 14px; color: #1f2937; border-bottom: 1px solid #f3f4f6; font-size: 13px; cursor: pointer; -webkit-tap-highlight-color: rgba(217,119,6,0.3); }
+.submenu-item:hover, .submenu-item:active { background: #fef3c7; color: #d97706; }
 
 .main-content { padding: 12px; }
 .work-list-panel { background: white; border: 1px solid #d4d4d4; border-radius: 4px; margin-bottom: 12px; }
@@ -87,11 +94,11 @@ body { font-family: "Microsoft JhengHei", "微軟正黑體", -apple-system, sans
 .alert-box.info { background: #dbeafe; border-color: #3b82f6; color: #1e40af; }
 .alert-box.success { background: #d1fae5; border-color: #10b981; color: #065f46; }
 
-.btn-primary { background: linear-gradient(to bottom, #fbbf24, #f59e0b); color: #78350f; padding: 8px 20px; border: 1px solid #d97706; border-radius: 4px; font-size: 14px; font-weight: bold; cursor: pointer; }
-.btn-secondary { background: #6b7280; color: white; padding: 8px 20px; border: 1px solid #4b5563; border-radius: 4px; font-size: 14px; cursor: pointer; }
-.btn-confirm { background: linear-gradient(to bottom, #4ade80, #22c55e); color: white; padding: 8px 25px; border: 1px solid #15803d; border-radius: 4px; font-size: 14px; font-weight: bold; cursor: pointer; }
-.btn-danger { background: linear-gradient(to bottom, #f87171, #ef4444); color: white; padding: 6px 12px; border: 1px solid #b91c1c; border-radius: 4px; font-size: 12px; cursor: pointer; }
-.btn-edit { background: linear-gradient(to bottom, #60a5fa, #3b82f6); color: white; padding: 6px 12px; border: 1px solid #1d4ed8; border-radius: 4px; font-size: 12px; cursor: pointer; }
+.btn-primary { background: linear-gradient(to bottom, #fbbf24, #f59e0b); color: #78350f; padding: 8px 20px; border: 1px solid #d97706; border-radius: 4px; font-size: 14px; font-weight: bold; cursor: pointer; -webkit-tap-highlight-color: rgba(217,119,6,0.3); }
+.btn-secondary { background: linear-gradient(to bottom, #d1d5db, #9ca3af); color: #1f2937; padding: 8px 20px; border: 1px solid #6b7280; border-radius: 4px; font-size: 14px; font-weight: bold; cursor: pointer; -webkit-tap-highlight-color: rgba(107,114,128,0.3); }
+.btn-confirm { background: linear-gradient(to bottom, #4ade80, #22c55e); color: white; padding: 8px 25px; border: 1px solid #15803d; border-radius: 4px; font-size: 14px; font-weight: bold; cursor: pointer; -webkit-tap-highlight-color: rgba(34,197,94,0.3); }
+.btn-danger { background: linear-gradient(to bottom, #f87171, #ef4444); color: white; padding: 8px 14px; border: 1px solid #b91c1c; border-radius: 4px; font-size: 13px; font-weight: bold; cursor: pointer; -webkit-tap-highlight-color: rgba(239,68,68,0.4); min-height: 36px; }
+.btn-edit { background: linear-gradient(to bottom, #60a5fa, #3b82f6); color: white; padding: 8px 14px; border: 1px solid #1d4ed8; border-radius: 4px; font-size: 13px; font-weight: bold; cursor: pointer; -webkit-tap-highlight-color: rgba(59,130,246,0.4); min-height: 36px; }
 
 /* ========== 排班作業 ========== */
 /* ========== 多員工橫向排班表 ========== */
@@ -885,6 +892,63 @@ body { font-family: "Microsoft JhengHei", "微軟正黑體", -apple-system, sans
 /* ========== 列印專用樣式（比照門市人員週排班表） ========== */
 .print-area { display: none; }
 
+/* 💵 現金日報 */
+.cr-section {
+    background: white;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    padding: 12px;
+    margin-bottom: 14px;
+}
+.cr-section-title {
+    font-weight: bold;
+    color: #1f2937;
+    font-size: 14px;
+    padding-bottom: 8px;
+    margin-bottom: 10px;
+    border-bottom: 2px solid #fbbf24;
+    background: linear-gradient(to right, #fef3c7, transparent);
+    padding-left: 8px;
+}
+.cr-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+}
+.cr-table th {
+    background: #f3f4f6;
+    border: 1px solid #d1d5db;
+    padding: 8px 6px;
+    text-align: center;
+    font-weight: bold;
+    font-size: 12px;
+}
+.cr-table td {
+    border: 1px solid #d1d5db;
+    padding: 6px;
+    text-align: center;
+}
+.cr-table td:first-child {
+    text-align: left;
+    padding-left: 10px;
+}
+.cr-table input[type="number"], .cr-table input[type="text"] {
+    width: 100%;
+    padding: 4px 6px;
+    border: 1px solid #999;
+    border-radius: 3px;
+    text-align: right;
+    font-size: 12px;
+    box-sizing: border-box;
+}
+.cr-table .auto-calc {
+    background: #fef3c7;
+    font-weight: bold;
+    color: #92400e;
+}
+.cr-table .auto-calc input { background: transparent; border: none; font-weight: bold; }
+.cr-table .row-section { background: #ede9fe; font-weight: bold; }
+
 /* ⭐ 關鍵：預設隱藏 modals 與非當前頁面 */
 .hidden { display: none !important; }
 .page-content { display: block; }
@@ -1075,6 +1139,7 @@ body { font-family: "Microsoft JhengHei", "微軟正黑體", -apple-system, sans
         <div class="menu-item" id="menu-employee">👥 員工資料 ▼
             <div class="submenu">
                 <div class="submenu-item" onclick="goToPage('employeeBasic','menu-employee')">📝 員工基本資料</div>
+                <div class="submenu-item" onclick="goToPage('leaveAllocation','menu-employee')">🌴 假別額度管理</div>
                 <div class="submenu-item" onclick="goToPage('payroll','menu-employee')">💰 薪資管理</div>
                 <div class="submenu-item" onclick="goToPage('mySalary','menu-employee')">📄 我的薪資</div>
                 <div class="submenu-item" onclick="goToPage('insuranceAdd','menu-employee')">➕ 加保作業</div>
@@ -1083,6 +1148,7 @@ body { font-family: "Microsoft JhengHei", "微軟正黑體", -apple-system, sans
                 <div class="submenu-item" onclick="goToPage('changePassword','menu-employee')">🔑 變更密碼</div>
             </div>
         </div>
+        <div class="menu-item" id="menu-cash" onclick="goToPage('cashReport','menu-cash')">💵 現金日報</div>
         <div class="menu-item" id="menu-system">⚙️ 系統管理 ▼
             <div class="submenu">
                 <div class="submenu-item" onclick="goToPage('storeManagement','menu-system')">🏬 門市管理</div>
@@ -1127,12 +1193,17 @@ body { font-family: "Microsoft JhengHei", "微軟正黑體", -apple-system, sans
                 <button class="btn-toolbar" onclick="currentWeek()">本週</button>
                 <button class="btn-toolbar" onclick="nextWeek()">下週 ▶</button>
             </div>
-            <div class="filter-row">
+            <div class="filter-row" id="schedAdminToolbar">
                 <button class="add-employee-btn" style="width:auto; padding:6px 14px;" onclick="openAddEmployeeModal()">➕ 新增員工</button>
                 <button class="btn-toolbar green" onclick="saveScheduleAlert()">💾 儲存</button>
                 <button class="btn-toolbar" onclick="printSchedule()">🖨 列印</button>
                 <button class="btn-toolbar red" onclick="showWorkList()">↩ 返回</button>
                 <span style="margin-left:auto;" id="weekStatsInline"></span>
+            </div>
+            <div class="filter-row" id="schedViewToolbar" style="display:none;">
+                <button class="btn-toolbar" onclick="printSchedule()">🖨 列印我的班表</button>
+                <button class="btn-toolbar red" onclick="showWorkList()">↩ 返回</button>
+                <span style="margin-left:auto; color:#92400e; font-size:12px;" id="schedViewInfo">👁️ 您目前是「<strong>唯讀模式</strong>」，只能查看不能修改</span>
             </div>
         </div>
         
@@ -1315,6 +1386,45 @@ body { font-family: "Microsoft JhengHei", "微軟正黑體", -apple-system, sans
         </div></div></div>
     </div>
     
+    <!-- 🌴 假別額度管理頁面 -->
+    <div id="page-leaveAllocation" class="page-content hidden">
+        <div class="breadcrumb">🏠 <a onclick="showWorkList()">工作清單</a> &gt; 👥 員工資料 &gt; <strong>🌴 假別額度管理</strong></div>
+        <div class="main-content">
+            <div class="work-list-panel">
+                <div class="panel-header">
+                    <h3>🌴 假別額度管理（所有員工總覽）</h3>
+                </div>
+                <div class="panel-body">
+                    <div class="alert-box info">
+                        💡 此頁顯示所有員工的假別總額（系統預設 + 額外調整）。<br>
+                        點員工列「✏️ 調整」可編輯該員工的假別時數。
+                    </div>
+                    <div style="margin-bottom:10px;">
+                        <input type="text" id="laSearchInput" placeholder="🔍 搜尋員工姓名或編號" style="padding:6px 10px; border:1px solid #999; border-radius:3px; width:300px;" oninput="renderLeaveAllocation()">
+                    </div>
+                    <div style="overflow-x:auto;">
+                        <table class="work-table" style="min-width:760px;">
+                            <thead>
+                                <tr>
+                                    <th>員工</th>
+                                    <th>🏬 門市</th>
+                                    <th>🌴 特休</th>
+                                    <th>🏥 病假</th>
+                                    <th>📋 事假</th>
+                                    <th>💒 婚假</th>
+                                    <th>🕯️ 喪假</th>
+                                    <th>💼 補休</th>
+                                    <th>操作</th>
+                                </tr>
+                            </thead>
+                            <tbody id="leaveAllocationBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
     <!-- 💰 薪資管理頁面（管理員） -->
     <div id="page-payroll" class="page-content hidden">
         <div class="breadcrumb">🏠 <a onclick="showWorkList()">工作清單</a> &gt; 👥 員工資料 &gt; <strong>💰 薪資管理</strong></div>
@@ -1424,6 +1534,137 @@ body { font-family: "Microsoft JhengHei", "微軟正黑體", -apple-system, sans
     </div>
     
     <!-- 🏬 門市管理 -->
+    <!-- 💵 現金日報頁面 -->
+    <div id="page-cashReport" class="page-content hidden">
+        <div class="breadcrumb">🏠 <a onclick="showWorkList()">工作清單</a> &gt; <strong>💵 現金日報</strong></div>
+        <div class="main-content">
+            <div class="work-list-panel">
+                <div class="panel-header" style="display:flex; justify-content:space-between; flex-wrap:wrap; gap:8px;">
+                    <h3>💵 現金日報表（代用轉帳傳票）</h3>
+                    <div style="display:flex; gap:8px; align-items:center;">
+                        <label style="font-size:13px;">會計日：</label>
+                        <input type="date" id="crDate" onchange="loadCashReport()" style="padding:5px; border:1px solid #999; border-radius:3px;">
+                        <button class="btn-confirm" style="padding:6px 14px; font-size:13px;" onclick="saveCashReport()">💾 儲存</button>
+                        <button class="btn-primary" style="padding:6px 14px; font-size:13px;" onclick="printCashReport()">🖨️ 列印</button>
+                    </div>
+                </div>
+                <div class="panel-body">
+                    <!-- 📸 OCR 上傳區 -->
+                    <div style="background:linear-gradient(135deg, #dbeafe, #bfdbfe); padding:14px; border-radius:8px; margin-bottom:14px; border:1px solid #3b82f6;">
+                        <div style="font-weight:bold; margin-bottom:10px; color:#1e3a8a; font-size:14px;">📸 上傳現金日報圖片自動辨識</div>
+                        <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-bottom:8px;">
+                            <input type="file" id="crImageUpload" accept="image/*" style="font-size:13px;">
+                            <button class="btn-confirm" style="padding:8px 16px;font-size:13px;" onclick="processCashReportOCR()">🔍 開始 OCR 辨識</button>
+                            <span id="crOcrStatus" style="font-size:12px; color:#1e40af; font-weight:bold;"></span>
+                        </div>
+                        <div id="crImagePreview" style="margin-top:10px; display:none;">
+                            <img id="crPreviewImg" style="max-width:100%; max-height:200px; border:1px solid #d97706; border-radius:4px;">
+                        </div>
+                        <textarea id="crOcrResult" rows="4" placeholder="OCR 辨識結果會顯示在這裡，您可以檢查後再點「套用到表格」" style="width:100%; margin-top:8px; padding:8px; border:1px solid #999; border-radius:4px; font-family:monospace; font-size:11px; display:none;"></textarea>
+                        <button id="crApplyOcrBtn" class="btn-primary" onclick="applyOcrToForm()" style="margin-top:8px; padding:8px 16px; font-size:13px; display:none;">✅ 套用到表格</button>
+                        <div style="margin-top:6px; font-size:11px; color:#6b7280;">💡 提示：第一次使用會下載中文辨識引擎（約 10MB），請耐心等候。建議圖片清晰、平整、無遮擋。</div>
+                    </div>
+                    
+                    <!-- 報表標題區 -->
+                    <div class="cash-report-header" style="background:#fef3c7; padding:14px; border-radius:6px; margin-bottom:14px;">
+                        <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(180px, 1fr)); gap:8px; font-size:13px;">
+                            <div><strong>店號：</strong><input type="text" id="crStoreCode" placeholder="285861" style="border:none; background:transparent; width:100px;"></div>
+                            <div><strong>店名：</strong><input type="text" id="crStoreName" placeholder="例：小金" style="border:none; background:transparent; width:120px;"></div>
+                            <div><strong>列印日：</strong><span id="crPrintDate" style="color:#92400e;"></span></div>
+                            <div><strong>會計日：</strong><span id="crAccDate" style="color:#92400e;"></span></div>
+                        </div>
+                    </div>
+                    
+                    <!-- 📊 第一區：發票日結帳金額（3台收銀機） -->
+                    <div class="cr-section">
+                        <div class="cr-section-title">📊 發票日結帳金額 / 實際銷貨收入</div>
+                        <div style="overflow-x:auto;">
+                        <table class="cr-table" style="min-width:680px;">
+                            <thead>
+                                <tr>
+                                    <th style="width:200px;">項目</th>
+                                    <th>收銀機 1</th>
+                                    <th>收銀機 2</th>
+                                    <th>收銀機 3</th>
+                                    <th style="background:#fef3c7;">合計</th>
+                                </tr>
+                            </thead>
+                            <tbody id="crRegisterBody"></tbody>
+                        </table>
+                        </div>
+                    </div>
+                    
+                    <!-- 💼 第二區：銷貨收入 + 代收款 + 代現金 -->
+                    <div class="cr-section">
+                        <div class="cr-section-title">💼 銷貨收入 + 代收款 + 代現金</div>
+                        <table class="cr-table">
+                            <thead>
+                                <tr><th>會計科目</th><th>張數</th><th>金額</th></tr>
+                            </thead>
+                            <tbody id="crIncomeBody"></tbody>
+                        </table>
+                    </div>
+                    
+                    <!-- 💸 第三區：費用支出 -->
+                    <div class="cr-section">
+                        <div class="cr-section-title">💸 費用支出</div>
+                        <table class="cr-table">
+                            <thead>
+                                <tr><th>會計科目</th><th>張數</th><th>金額</th></tr>
+                            </thead>
+                            <tbody id="crExpenseBody"></tbody>
+                        </table>
+                    </div>
+                    
+                    <!-- 💰 第四區：現金退貨 / 現金進貨 -->
+                    <div class="cr-section">
+                        <div class="cr-section-title">💰 現金退貨 / 現金進貨</div>
+                        <table class="cr-table">
+                            <thead>
+                                <tr><th>會計科目</th><th>張數</th><th>零售價</th><th>金額</th></tr>
+                            </thead>
+                            <tbody id="crRefundBody"></tbody>
+                        </table>
+                    </div>
+                    
+                    <!-- 🏦 第五區：週轉金 -->
+                    <div class="cr-section">
+                        <div class="cr-section-title">🏦 週轉金</div>
+                        <table class="cr-table">
+                            <thead>
+                                <tr><th>會計科目</th><th>金額</th></tr>
+                            </thead>
+                            <tbody id="crCashBody"></tbody>
+                        </table>
+                    </div>
+                    
+                    <!-- 📝 備註 + 電子簽名 -->
+                    <div class="cr-section">
+                        <div class="cr-section-title">📝 備註與電子簽名</div>
+                        <table class="form-table">
+                            <tr><td class="label-col">備註：</td><td><textarea id="crNote" rows="2" placeholder="例：i划算業績：本日無資料"></textarea></td></tr>
+                        </table>
+                        
+                        <div style="display:grid; grid-template-columns:1fr; gap:14px; margin-top:14px;">
+                            <div style="background:#fef3c7; padding:14px; border-radius:6px; border:2px solid #d97706;">
+                                <div style="font-weight:bold; margin-bottom:10px; color:#92400e; font-size:15px;">🖋️ 店經理簽名</div>
+                                <input type="hidden" id="sig_manager_data">
+                                <input type="hidden" id="sig_manager_time">
+                                <div id="sigContainer_manager"></div>
+                            </div>
+                            <div style="background:#dbeafe; padding:14px; border-radius:6px; border:2px solid #3b82f6;">
+                                <div style="font-weight:bold; margin-bottom:10px; color:#1e3a8a; font-size:15px;">🖋️ 會計人員簽名</div>
+                                <input type="hidden" id="sig_accountant_data">
+                                <input type="hidden" id="sig_accountant_time">
+                                <div id="sigContainer_accountant"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
     <div id="page-storeManagement" class="page-content hidden">
         <div class="breadcrumb">🏠 <a onclick="showWorkList()">工作清單</a> &gt; ⚙️ 系統管理 &gt; <strong>🏬 門市管理</strong></div>
         <div class="main-content">
@@ -1715,6 +1956,62 @@ body { font-family: "Microsoft JhengHei", "微軟正黑體", -apple-system, sans
         <div style="text-align:center; margin-top:15px;">
             <button class="btn-confirm" onclick="saveEmployeeFull()">✅ 儲存</button>
             <button class="btn-secondary" style="margin-left:8px;" onclick="closeModal('empFullModal')">取消</button>
+        </div>
+    </div>
+</div>
+
+<!-- 🗑️ 自製刪除確認 Modal（iOS 完美相容） -->
+<div id="confirmDeleteModal" class="modal-overlay hidden">
+    <div class="modal-content" style="max-width:420px;">
+        <div style="text-align:center; padding: 10px 0;">
+            <div style="font-size:42px;">⚠️</div>
+            <div id="confirmDeleteTitle" style="font-size:18px; font-weight:bold; color:#dc2626; margin-top:8px;">確定刪除？</div>
+            <div id="confirmDeleteMsg" style="font-size:13px; color:#4b5563; line-height:1.7; margin-top:10px; padding:10px; background:#fef2f2; border-radius:4px; text-align:left;"></div>
+        </div>
+        <div style="text-align:center; margin-top:15px;">
+            <button class="btn-danger" onclick="executePendingDelete()" style="padding:10px 24px; font-size:14px; font-weight:bold;">🗑️ 確定刪除</button>
+            <button class="btn-secondary" style="margin-left:10px; padding:10px 24px;" onclick="cancelPendingDelete()">取消</button>
+        </div>
+    </div>
+</div>
+
+<!-- 🏖️ 假別額度編輯 Modal -->
+<div id="leaveBalanceModal" class="modal-overlay hidden">
+    <div class="modal-content" style="max-width:560px; max-height:92vh; overflow-y:auto;">
+        <div class="modal-title" style="display:flex; justify-content:space-between; align-items:center;">
+            <span>🏖️ 編輯假別時數</span>
+            <button onclick="closeModal('leaveBalanceModal')" style="background:none; border:none; font-size:20px; cursor:pointer; color:#6b7280;">✕</button>
+        </div>
+        <div id="lbModalInfo" style="background:#ede9fe; padding:10px; border-radius:4px; margin-bottom:12px; font-size:13px;"></div>
+        <input type="hidden" id="lbEmpId">
+        
+        <div style="background:#fef3c7; padding:10px; border-radius:4px; margin-bottom:12px; font-size:12px; line-height:1.6; color:#78350f;">
+            💡 <strong>使用說明：</strong>
+            <ul style="margin:6px 0 0 18px; padding:0;">
+                <li>「<strong>系統預設</strong>」：勞基法基本天數</li>
+                <li>「<strong>額外調整</strong>」：員工特殊福利或補發（正數=多給）</li>
+                <li>「<strong>總計</strong>」：系統預設 + 額外調整（自動計算）</li>
+                <li>「<strong>已使用</strong>」：含已通過及審核中的請假</li>
+            </ul>
+        </div>
+        
+        <table style="width:100%; border-collapse:collapse; font-size:13px;">
+            <thead>
+                <tr style="background:#f3f4f6;">
+                    <th style="padding:8px; border-bottom:1px solid #d1d5db; text-align:left;">假別</th>
+                    <th style="padding:8px; border-bottom:1px solid #d1d5db; text-align:center; width:90px;">系統預設<br><small style="color:#6b7280;font-size:10px;">(小時)</small></th>
+                    <th style="padding:8px; border-bottom:1px solid #d1d5db; text-align:center; width:100px;">額外調整<br><small style="color:#6b7280;font-size:10px;">(小時)</small></th>
+                    <th style="padding:8px; border-bottom:1px solid #d1d5db; text-align:center; width:80px;">總計<br><small style="color:#6b7280;font-size:10px;">(小時)</small></th>
+                    <th style="padding:8px; border-bottom:1px solid #d1d5db; text-align:center; width:80px;">已使用<br><small style="color:#6b7280;font-size:10px;">(小時)</small></th>
+                </tr>
+            </thead>
+            <tbody id="lbTableBody"></tbody>
+        </table>
+        
+        <div style="text-align:center; margin-top:15px; padding-top:12px; border-top:1px solid #e5e7eb;">
+            <button class="btn-confirm" onclick="saveLeaveBalanceAdjust()">✅ 儲存調整</button>
+            <button class="btn-secondary" style="margin-left:10px;" onclick="resetLeaveBalanceAdjust()">🔄 全部歸零</button>
+            <button class="btn-secondary" style="margin-left:10px;" onclick="closeModal('leaveBalanceModal')">取消</button>
         </div>
     </div>
 </div>
@@ -2142,16 +2439,22 @@ var ROLE_PERMISSIONS = {
         allowed: ['workList', 'attendanceAbnormal', 'overtimeApply', 'businessTrip',
                   'cardSupplement', 'leaveApply', 'attendanceQuery', 'schedule',
                   'scheduleQuery', 'shiftSwap', 'reviewMonth', 'employeeBasic',
-                  'insuranceAdd', 'insuranceRemove', 'insuranceQuery',
-                  'changePassword', 'payroll', 'mySalary']
+                  'leaveAllocation', 'insuranceAdd', 'insuranceRemove', 'insuranceQuery',
+                  'changePassword', 'payroll', 'mySalary', 'cashReport']
+    },
+    'deputy': {
+        // 副店長：協助店長，可使用現金日報、排班、請假、薪資查詢
+        allowed: ['workList', 'attendanceAbnormal', 'overtimeApply', 'businessTrip',
+                  'cardSupplement', 'leaveApply', 'attendanceQuery', 'schedule',
+                  'shiftSwap', 'changePassword', 'mySalary', 'cashReport']
     },
     'staff': {
-        // 一般職員：僅查看班表+請假+變更密碼+我的薪資
-        allowed: ['workList', 'scheduleQuery', 'leaveApply', 'changePassword', 'mySalary']
+        // 一般職員：可看排班作業（唯讀）+ 請假 + 變更密碼 + 我的薪資
+        allowed: ['workList', 'schedule', 'leaveApply', 'changePassword', 'mySalary']
     },
     'user': {
         // 時薪人員：同一般職員
-        allowed: ['workList', 'scheduleQuery', 'leaveApply', 'changePassword', 'mySalary']
+        allowed: ['workList', 'schedule', 'leaveApply', 'changePassword', 'mySalary']
     }
 };
 
@@ -2243,6 +2546,8 @@ function goToPage(pageName, menuId) {
     else if (pageName === 'attendanceQuery') { loadEmployeeOptions('aqEmployee'); setCurrentMonth('aqMonth'); renderAttendanceQuery(); }
     else if (pageName === 'scheduleQuery') { loadEmployeeOptions('sqEmployee'); setCurrentMonth('sqMonth'); renderScheduleQuery(); }
     else if (pageName === 'employeeBasic') renderEmployeeBasicList();
+    else if (pageName === 'leaveAllocation') renderLeaveAllocation();
+    else if (pageName === 'cashReport') initCashReport();
     else if (pageName === 'insuranceAdd') { /* 加保表單 */ }
     else if (pageName === 'insuranceRemove') loadInsuranceRemoveOptions();
     else if (pageName === 'insuranceQuery') renderInsuranceQuery();
@@ -2350,12 +2655,17 @@ function editWork(id) {
 }
 
 function deleteWork(id) {
-    if (!confirm('⚠️ 確定刪除？')) return;
     var works = loadData('works', defaultWorks);
-    works = works.filter(function(x) { return x.id !== id; });
-    saveData('works', works);
-    renderWorkList();
-    showNotif('✅ 已刪除');
+    var work = works.find(function(w) { return w.id === id; });
+    if (!work) return;
+    
+    showConfirmDelete('確定刪除工作？', '<strong>' + (work.title || '此工作') + '</strong><br><br>此操作無法復原！', function() {
+        var w2 = loadData('works', defaultWorks);
+        w2 = w2.filter(function(w) { return w.id !== id; });
+        saveData('works', w2);
+        renderWorkList();
+        showNotif('🗑️ 工作已刪除');
+    });
 }
 
 function saveWork() {
@@ -2452,6 +2762,23 @@ function renderScheduleTable() {
     var shifts = loadData('shifts', {});
     var stores = loadData('stores', defaultStores);
     
+    // 🔐 判斷編輯權限（只有 admin/manager 可編輯）
+    var isEditor = currentUser && (currentUser.role === 'admin' || currentUser.role === 'manager');
+    var adminBar = document.getElementById('schedAdminToolbar');
+    var viewBar = document.getElementById('schedViewToolbar');
+    if (adminBar) adminBar.style.display = isEditor ? '' : 'none';
+    if (viewBar) viewBar.style.display = isEditor ? 'none' : '';
+    
+    // 員工角色：強制鎖定門市為自己的主屬門市
+    if (!isEditor && currentUser) {
+        var myEmp = employees.find(function(e) {
+            return e.num === currentUser.id || e.name === currentUser.name;
+        });
+        if (myEmp && myEmp.homeStoreId) {
+            currentSchedStoreId = myEmp.homeStoreId;
+        }
+    }
+    
     // 週區間顯示
     var startStr = formatDate(dates[0]);
     var endStr = formatDate(dates[6]);
@@ -2463,21 +2790,24 @@ function renderScheduleTable() {
     if (storeSel) {
         var activeStores = stores.filter(function(s) { return s.status !== 'closed'; });
         
-        // 決定 currentSchedStoreId 的值
-        // 1. 若選單目前有值且該門市存在 → 用選單值
-        // 2. 否則用 currentSchedStoreId（若有且存在）
-        // 3. 否則用第一個門市
         var selValue = storeSel.value;
         var validIds = activeStores.map(function(s) { return s.id; });
         
-        if (selValue && validIds.indexOf(selValue) !== -1) {
-            currentSchedStoreId = selValue;
-        } else if (currentSchedStoreId && validIds.indexOf(currentSchedStoreId) !== -1) {
-            // currentSchedStoreId 仍有效
-        } else if (activeStores.length > 0) {
-            currentSchedStoreId = activeStores[0].id;
+        if (isEditor) {
+            // 管理員/店長：可切換
+            if (selValue && validIds.indexOf(selValue) !== -1) {
+                currentSchedStoreId = selValue;
+            } else if (currentSchedStoreId && validIds.indexOf(currentSchedStoreId) !== -1) {
+                // 保留現有
+            } else if (activeStores.length > 0) {
+                currentSchedStoreId = activeStores[0].id;
+            } else {
+                currentSchedStoreId = null;
+            }
+            storeSel.disabled = false;
         } else {
-            currentSchedStoreId = null;
+            // 員工：鎖定為自己的主屬門市
+            storeSel.disabled = true;
         }
         
         // 重建選項
@@ -2806,35 +3136,33 @@ function modalUpdateSlot(slotIndex, field, value) {
 
 function clearShiftFromModal() {
     if (!editingShift) return;
-    if (!confirm('⚠️ 確定清除此天所有排班？')) return;
-    
-    var shifts = loadData('shifts', {});
-    if (shifts[editingShift.dateKey] && shifts[editingShift.dateKey][editingShift.empId]) {
-        delete shifts[editingShift.dateKey][editingShift.empId];
-        if (Object.keys(shifts[editingShift.dateKey]).length === 0) delete shifts[editingShift.dateKey];
-        saveData('shifts', shifts);
-    }
-    
-    recalculateCompLeave();
-    closeModal('shiftEditModal');
-    renderScheduleTable();
-    showNotif('🗑️ 排班已清除');
+    showConfirmDelete('確定清除此天所有排班？', '<strong>該員工該日的所有班別會被清除</strong><br>此操作無法復原！', function() {
+        var shifts = loadData('shifts', {});
+        if (shifts[editingShift.dateKey] && shifts[editingShift.dateKey][editingShift.empId]) {
+            delete shifts[editingShift.dateKey][editingShift.empId];
+            if (Object.keys(shifts[editingShift.dateKey]).length === 0) delete shifts[editingShift.dateKey];
+            saveData('shifts', shifts);
+        }
+        recalculateCompLeave();
+        closeModal('shiftEditModal');
+        renderScheduleTable();
+        showNotif('🗑️ 排班已清除');
+    });
 }
 
 function clearAllSlots(empId, dateKey) {
     if (!currentUser || (currentUser.role !== 'admin' && currentUser.role !== 'manager')) return;
-    if (!confirm('⚠️ 確定清除此天排班？')) return;
-    
-    var shifts = loadData('shifts', {});
-    if (shifts[dateKey] && shifts[dateKey][empId]) {
-        delete shifts[dateKey][empId];
-        if (Object.keys(shifts[dateKey]).length === 0) delete shifts[dateKey];
-        saveData('shifts', shifts);
-    }
-    
-    recalculateCompLeave();
-    renderScheduleTable();
-    showNotif('🗑️ 排班已清除');
+    showConfirmDelete('確定清除此天排班？', '<strong>該員工該日的排班會被清除</strong>', function() {
+        var shifts = loadData('shifts', {});
+        if (shifts[dateKey] && shifts[dateKey][empId]) {
+            delete shifts[dateKey][empId];
+            if (Object.keys(shifts[dateKey]).length === 0) delete shifts[dateKey];
+            saveData('shifts', shifts);
+        }
+        recalculateCompLeave();
+        renderScheduleTable();
+        showNotif('🗑️ 排班已清除');
+    });
 }
 
 // ============= 超時轉代休假核心邏輯 =============
@@ -3109,19 +3437,18 @@ function saveShift() {
 }
 
 function deleteShift() {
-    if (!confirm('⚠️ 確定刪除此排班？')) return;
     if (!currentShift) return;
-    
-    var shifts = loadData('shifts', {});
-    if (shifts[currentShift.dateKey] && shifts[currentShift.dateKey][currentShift.empId]) {
-        delete shifts[currentShift.dateKey][currentShift.empId];
-        if (Object.keys(shifts[currentShift.dateKey]).length === 0) delete shifts[currentShift.dateKey];
-        saveData('shifts', shifts);
-    }
-    
-    closeModal('shiftModal');
-    renderScheduleTable();
-    showNotif('🗑️ 排班已刪除');
+    showConfirmDelete('確定刪除此排班？', '<strong>該員工該日的排班會被清除</strong><br>此操作無法復原！', function() {
+        var shifts = loadData('shifts', {});
+        if (shifts[currentShift.dateKey] && shifts[currentShift.dateKey][currentShift.empId]) {
+            delete shifts[currentShift.dateKey][currentShift.empId];
+            if (Object.keys(shifts[currentShift.dateKey]).length === 0) delete shifts[currentShift.dateKey];
+            saveData('shifts', shifts);
+        }
+        closeModal('shiftModal');
+        renderScheduleTable();
+        showNotif('🗑️ 排班已刪除');
+    });
 }
 
 // 員工管理
@@ -3198,22 +3525,32 @@ function saveEmployee() {
 }
 
 function deleteEmployee(id) {
-    if (!currentUser || currentUser.role !== 'admin') return;
-    if (!confirm('⚠️ 確定刪除此員工？\n會同時刪除其所有排班資料')) return;
+    if (!currentUser || currentUser.role !== 'admin') {
+        alert('⚠️ 只有管理員可刪除員工');
+        return;
+    }
     
     var employees = loadData('employees', defaultEmployees);
-    employees = employees.filter(function(e) { return e.id !== id; });
-    saveData('employees', employees);
+    var emp = employees.find(function(e) { return e.id === id; });
+    if (!emp) return;
     
-    var shifts = loadData('shifts', {});
-    Object.keys(shifts).forEach(function(date) {
-        if (shifts[date][id]) delete shifts[date][id];
-        if (Object.keys(shifts[date]).length === 0) delete shifts[date];
+    var msg = '<strong>員工：' + emp.name + '</strong><br><br>會同時刪除其所有排班資料。<br><br><strong style="color:#dc2626;">⚠️ 此操作無法復原！</strong>';
+    
+    showConfirmDelete('確定刪除員工？', msg, function() {
+        var emps2 = loadData('employees', defaultEmployees);
+        emps2 = emps2.filter(function(e) { return e.id !== id; });
+        saveData('employees', emps2);
+        
+        var shifts = loadData('shifts', {});
+        Object.keys(shifts).forEach(function(date) {
+            if (shifts[date][id]) delete shifts[date][id];
+            if (Object.keys(shifts[date]).length === 0) delete shifts[date];
+        });
+        saveData('shifts', shifts);
+        
+        renderScheduleTable();
+        showNotif('🗑️ 員工已刪除：' + emp.name);
     });
-    saveData('shifts', shifts);
-    
-    renderScheduleTable();
-    showNotif('🗑️ 員工已刪除');
 }
 
 // 週切換
@@ -3407,20 +3744,965 @@ function renderCardSuppHistory() {
 
 // ============= 請假申請 =============
 var LEAVE_TYPES = {
-    'annual':      { name: '特休假', color: '#22c55e', icon: '🌴', total: 10 },
-    'sick':        { name: '病假',   color: '#3b82f6', icon: '🏥', total: 30 },
-    'personal':    { name: '事假',   color: '#f59e0b', icon: '📋', total: 14 },
-    'marriage':    { name: '婚假',   color: '#ec4899', icon: '💒', total: 8 },
-    'bereavement': { name: '喪假',   color: '#6b7280', icon: '🕯️', total: 8 },
-    'comp':        { name: '補休',   color: '#8b5cf6', icon: '💼', total: 4 }
+    'annual':      { name: '特休假', color: '#22c55e', icon: '🌴', total: 0 },
+    'sick':        { name: '病假',   color: '#3b82f6', icon: '🏥', total: 0 },
+    'personal':    { name: '事假',   color: '#f59e0b', icon: '📋', total: 0 },
+    'marriage':    { name: '婚假',   color: '#ec4899', icon: '💒', total: 0 },
+    'bereavement': { name: '喪假',   color: '#6b7280', icon: '🕯️', total: 0 },
+    'comp':        { name: '補休',   color: '#8b5cf6', icon: '💼', total: 0 }
 };
 
+// ============= 🏖️ 假別額度編輯 =============
+// 假別額度管理頁（員工總覽）
+// ============= 💵 現金日報 =============
+// 收銀機項目（依圖片）
+var CR_REGISTER_ITEMS = [
+    { code: '101',  name: '本日來客數', isCount: true },
+    { code: '102',  name: '本日結帳累計金額' },
+    { code: '103',  name: '- 昨日結帳累計金額' },
+    { code: '104',  name: '發票日結帳金額', auto: true },
+    { code: '104A', name: '　發票日結帳金額(免稅)' },
+    { code: '104B', name: '　發票日結帳金額(應稅)' },
+    { code: '105A', name: '- 退瓶/自帶杯(免稅)' },
+    { code: '105B', name: '- 退瓶/自帶杯(應稅)' },
+    { code: '106A', name: '- 折扣(免稅)' },
+    { code: '106B', name: '- 折扣(應稅)' },
+    { code: '107',  name: '- 門市折價券' },
+    { code: '108',  name: '- 廠商折價券' },
+    { code: '112',  name: '- 組合促銷折讓(免稅)' },
+    { code: '113',  name: '- 組合促銷折讓(應稅)' },
+    { code: '116',  name: '- 商品兌換券/卡(免稅)' },
+    { code: '117',  name: '- 商品兌換券/卡(應稅)' },
+    { code: '109',  name: '- 誤打銷退重印免稅銷售' },
+    { code: '110',  name: '- 誤打銷退重印應稅銷售' },
+    { code: '111',  name: '本日實際銷貨收入', auto: true },
+    { code: '120',  name: '實際營業額(扣除行動隨取)' }
+];
+
+var CR_INCOME_ITEMS = [
+    { code: '111A', name: '銷貨收入(免稅)', section: '💰 銷貨收入', hasCount: false },
+    { code: '111B', name: '銷貨收入(應稅)', hasCount: false },
+    { code: '111D', name: '代銷/隨取收入(免稅)', hasCount: false },
+    { code: '111E', name: '代銷/隨取收入(應稅)', hasCount: false },
+    { code: '202',  name: '代售商品', section: '💼 代收款及其他收入', hasCount: true },
+    { code: '204',  name: '慈善捐款', hasCount: true },
+    { code: '206',  name: '代收', hasCount: true },
+    { code: '208',  name: '總部撥款', hasCount: true },
+    { code: '209',  name: '門市暫收款', hasCount: true },
+    { code: '401',  name: '- 禮券', section: '💳 代現金', hasCount: true },
+    { code: '402',  name: '- 廠商代現金', hasCount: true },
+    { code: '407',  name: '- 禮物卡', hasCount: true },
+    { code: '408',  name: '- 禮券餘額卡', hasCount: true },
+    { code: '409',  name: '- 其它卡', hasCount: true },
+    { code: '410',  name: '- 代兌', hasCount: true }
+];
+
+var CR_EXPENSE_ITEMS = [
+    { code: '701', name: '- 現金支出進項稅額', hasCount: false },
+    { code: '704', name: '- 郵電費', hasCount: true },
+    { code: '706', name: '- 水、瓦斯費', hasCount: true },
+    { code: '707', name: '- 電費', hasCount: true },
+    { code: '708', name: '- 自用商品', hasCount: true },
+    { code: '709', name: '- 雜費', hasCount: true },
+    { code: '710', name: '- 清潔管理費', hasCount: true },
+    { code: '712', name: '- 交通費', hasCount: true },
+    { code: '713', name: '- 檢驗費', hasCount: true },
+    { code: '715', name: '- 偽鈔', hasCount: true },
+    { code: '717', name: '- 其他損失', hasCount: true },
+    { code: '718', name: '- 發票費用', hasCount: true },
+    { code: '719', name: '- 通路匯款', hasCount: true }
+];
+
+var CR_REFUND_ITEMS = [
+    { code: '501', name: '現金退貨（成本）', hasRetail: true },
+    { code: '502', name: '現金退貨進項稅額', hasRetail: false },
+    { code: '601', name: '- 現金進貨（成本）', hasRetail: true },
+    { code: '602', name: '- 現金進貨進項稅額', hasRetail: false }
+];
+
+var CR_CASH_ITEMS = [
+    { code: '801',  name: '昨日留存週轉金' },
+    { code: '802',  name: '本日應有現金小計', auto: true },
+    { code: '803',  name: '- 本日匯款額', auto: true },
+    { code: '803A', name: '　- 本日匯款額(郵局)' },
+    { code: '803B', name: '　- 本日匯款額(銀行)' },
+    { code: '803C', name: '　- 本日匯款額(ATM)' },
+    { code: '804',  name: '= 本日應有週轉金', auto: true },
+    { code: '805',  name: '本日實際清點週轉金' },
+    { code: '806',  name: '門市現金短/溢', auto: true }
+];
+
+function initCashReport() {
+    // 設定今天為預設日期
+    var today = new Date();
+    var yyyy = today.getFullYear();
+    var mm = String(today.getMonth() + 1).padStart(2, '0');
+    var dd = String(today.getDate()).padStart(2, '0');
+    var dateInput = document.getElementById('crDate');
+    if (dateInput && !dateInput.value) {
+        dateInput.value = yyyy + '-' + mm + '-' + dd;
+    }
+    
+    // 渲染表格結構
+    renderCRRegisterTable();
+    renderCRIncomeTable();
+    renderCRExpenseTable();
+    renderCRRefundTable();
+    renderCRCashTable();
+    
+    // 初始化電子簽名 Canvas
+    renderSignatureCanvas('manager');
+    renderSignatureCanvas('accountant');
+    
+    // 載入資料
+    loadCashReport();
+}
+
+function renderCRRegisterTable() {
+    var tbody = document.getElementById('crRegisterBody');
+    if (!tbody) return;
+    var html = '';
+    for (var i = 0; i < CR_REGISTER_ITEMS.length; i++) {
+        var item = CR_REGISTER_ITEMS[i];
+        var cls = item.auto ? 'auto-calc' : '';
+        html += '<tr>';
+        html += '<td style="text-align:left;"><span style="color:#9ca3af;font-size:10px;">' + item.code + '</span> ' + item.name + '</td>';
+        for (var r = 1; r <= 3; r++) {
+            html += '<td class="' + cls + '"><input type="number" id="cr_r' + r + '_' + item.code + '" oninput="recalcCashReport()" ' + (item.auto ? 'readonly' : '') + ' value="0"></td>';
+        }
+        html += '<td class="auto-calc"><input type="number" id="cr_total_' + item.code + '" readonly value="0"></td>';
+        html += '</tr>';
+    }
+    tbody.innerHTML = html;
+}
+
+function renderCRIncomeTable() {
+    var tbody = document.getElementById('crIncomeBody');
+    if (!tbody) return;
+    var html = '';
+    var lastSection = '';
+    for (var i = 0; i < CR_INCOME_ITEMS.length; i++) {
+        var item = CR_INCOME_ITEMS[i];
+        if (item.section && item.section !== lastSection) {
+            html += '<tr class="row-section"><td colspan="3">' + item.section + '</td></tr>';
+            lastSection = item.section;
+        }
+        html += '<tr>';
+        html += '<td><span style="color:#9ca3af;font-size:10px;">' + item.code + '</span> ' + item.name + '</td>';
+        if (item.hasCount) {
+            html += '<td><input type="number" id="cr_cnt_' + item.code + '" value="0"> 張</td>';
+        } else {
+            html += '<td style="color:#9ca3af;">-</td>';
+        }
+        html += '<td><input type="number" id="cr_amt_' + item.code + '" value="0"></td>';
+        html += '</tr>';
+    }
+    tbody.innerHTML = html;
+}
+
+function renderCRExpenseTable() {
+    var tbody = document.getElementById('crExpenseBody');
+    if (!tbody) return;
+    var html = '';
+    for (var i = 0; i < CR_EXPENSE_ITEMS.length; i++) {
+        var item = CR_EXPENSE_ITEMS[i];
+        html += '<tr>';
+        html += '<td><span style="color:#9ca3af;font-size:10px;">' + item.code + '</span> ' + item.name + '</td>';
+        if (item.hasCount) {
+            html += '<td><input type="number" id="cr_cnt_' + item.code + '" value="0"> 張</td>';
+        } else {
+            html += '<td style="color:#9ca3af;">-</td>';
+        }
+        html += '<td><input type="number" id="cr_amt_' + item.code + '" value="0"></td>';
+        html += '</tr>';
+    }
+    tbody.innerHTML = html;
+}
+
+function renderCRRefundTable() {
+    var tbody = document.getElementById('crRefundBody');
+    if (!tbody) return;
+    var html = '';
+    for (var i = 0; i < CR_REFUND_ITEMS.length; i++) {
+        var item = CR_REFUND_ITEMS[i];
+        html += '<tr>';
+        html += '<td><span style="color:#9ca3af;font-size:10px;">' + item.code + '</span> ' + item.name + '</td>';
+        html += '<td><input type="number" id="cr_cnt_' + item.code + '" value="0"> 張</td>';
+        if (item.hasRetail) {
+            html += '<td><input type="number" id="cr_retail_' + item.code + '" value="0"></td>';
+        } else {
+            html += '<td style="color:#9ca3af;">-</td>';
+        }
+        html += '<td><input type="number" id="cr_amt_' + item.code + '" value="0"></td>';
+        html += '</tr>';
+    }
+    tbody.innerHTML = html;
+}
+
+function renderCRCashTable() {
+    var tbody = document.getElementById('crCashBody');
+    if (!tbody) return;
+    var html = '';
+    for (var i = 0; i < CR_CASH_ITEMS.length; i++) {
+        var item = CR_CASH_ITEMS[i];
+        html += '<tr>';
+        html += '<td><span style="color:#9ca3af;font-size:10px;">' + item.code + '</span> ' + item.name + '</td>';
+        if (item.auto) {
+            html += '<td class="auto-calc"><input type="number" id="cr_amt_' + item.code + '" readonly value="0"></td>';
+        } else {
+            html += '<td><input type="number" id="cr_amt_' + item.code + '" oninput="recalcCashReport()" value="0"></td>';
+        }
+        html += '</tr>';
+    }
+    tbody.innerHTML = html;
+}
+
+// 即時自動計算
+function recalcCashReport() {
+    function num(id) { 
+        var el = document.getElementById(id);
+        return el ? (parseFloat(el.value) || 0) : 0;
+    }
+    function setVal(id, v) {
+        var el = document.getElementById(id);
+        if (el) el.value = v;
+    }
+    
+    // 收銀機合計
+    for (var i = 0; i < CR_REGISTER_ITEMS.length; i++) {
+        var item = CR_REGISTER_ITEMS[i];
+        var total = num('cr_r1_' + item.code) + num('cr_r2_' + item.code) + num('cr_r3_' + item.code);
+        setVal('cr_total_' + item.code, total);
+    }
+    
+    // 104 = 102 - 103
+    for (var r = 1; r <= 3; r++) {
+        var v104 = num('cr_r' + r + '_102') - num('cr_r' + r + '_103');
+        setVal('cr_r' + r + '_104', v104);
+    }
+    var t104 = num('cr_r1_104') + num('cr_r2_104') + num('cr_r3_104');
+    setVal('cr_total_104', t104);
+    
+    // 111 = 104 - 105A - 105B - 106A - 106B - 107 - 108 - 112 - 113 - 116 - 117 - 109 - 110
+    for (var r2 = 1; r2 <= 3; r2++) {
+        var v111 = num('cr_r' + r2 + '_104') 
+                 - num('cr_r' + r2 + '_105A') - num('cr_r' + r2 + '_105B')
+                 - num('cr_r' + r2 + '_106A') - num('cr_r' + r2 + '_106B')
+                 - num('cr_r' + r2 + '_107') - num('cr_r' + r2 + '_108')
+                 - num('cr_r' + r2 + '_112') - num('cr_r' + r2 + '_113')
+                 - num('cr_r' + r2 + '_116') - num('cr_r' + r2 + '_117')
+                 - num('cr_r' + r2 + '_109') - num('cr_r' + r2 + '_110');
+        setVal('cr_r' + r2 + '_111', v111);
+    }
+    var t111 = num('cr_r1_111') + num('cr_r2_111') + num('cr_r3_111');
+    setVal('cr_total_111', t111);
+    
+    // 802 = 801 + 全部收入 - 全部支出
+    var income = num('cr_amt_111A') + num('cr_amt_111B') + num('cr_amt_111D') + num('cr_amt_111E')
+               + num('cr_amt_202') + num('cr_amt_204') + num('cr_amt_206') + num('cr_amt_208') + num('cr_amt_209');
+    var expense = num('cr_amt_701') + num('cr_amt_704') + num('cr_amt_706') + num('cr_amt_707')
+                + num('cr_amt_708') + num('cr_amt_709') + num('cr_amt_710') + num('cr_amt_712')
+                + num('cr_amt_713') + num('cr_amt_715') + num('cr_amt_717') + num('cr_amt_718') + num('cr_amt_719');
+    var should = num('cr_amt_801') + income - expense;
+    setVal('cr_amt_802', should);
+    
+    // 803 = 803A + 803B + 803C
+    var transfer = num('cr_amt_803A') + num('cr_amt_803B') + num('cr_amt_803C');
+    setVal('cr_amt_803', transfer);
+    
+    // 804 = 802 - 803
+    var should2 = should - transfer;
+    setVal('cr_amt_804', should2);
+    
+    // 806 = 805 - 804
+    var diff = num('cr_amt_805') - should2;
+    setVal('cr_amt_806', diff);
+}
+
+// 載入資料
+function loadCashReport() {
+    var dateVal = document.getElementById('crDate').value;
+    if (!dateVal) return;
+    
+    var reports = loadData('dailyCashReports', {});
+    var key = dateVal;
+    var report = reports[key];
+    
+    // 列印時間 & 會計日顯示
+    var now = new Date();
+    document.getElementById('crPrintDate').textContent = formatDateTime(now);
+    var d = new Date(dateVal);
+    var weekDays = ['日','一','二','三','四','五','六'];
+    document.getElementById('crAccDate').textContent = 
+        d.getFullYear() + '年' + String(d.getMonth()+1).padStart(2,'0') + '月' + String(d.getDate()).padStart(2,'0') + '日(' + weekDays[d.getDay()] + ')';
+    
+    if (!report) {
+        // 清空所有欄位為 0
+        clearCashReportFields();
+        // 取目前門市資訊
+        var stores = loadData('stores', defaultStores);
+        var currentStoreId = loadData('currentStoreId', stores[0] && stores[0].id);
+        var store = stores.find(function(s) { return s.id === currentStoreId; }) || stores[0];
+        if (store) {
+            document.getElementById('crStoreCode').value = store.code || '';
+            document.getElementById('crStoreName').value = store.name || '';
+        }
+        return;
+    }
+    
+    // 填入儲存的資料
+    document.getElementById('crStoreCode').value = report.storeCode || '';
+    document.getElementById('crStoreName').value = report.storeName || '';
+    document.getElementById('crNote').value = report.note || '';
+    
+    // 載入簽名
+    if (report.managerSignData && report.managerSignTime) {
+        document.getElementById('sig_manager_data').value = report.managerSignData;
+        document.getElementById('sig_manager_time').value = report.managerSignTime;
+        showSignedSignature('manager', report.managerSignData, formatDateTime(new Date(report.managerSignTime)));
+    } else {
+        renderSignatureCanvas('manager');
+    }
+    if (report.accountantSignData && report.accountantSignTime) {
+        document.getElementById('sig_accountant_data').value = report.accountantSignData;
+        document.getElementById('sig_accountant_time').value = report.accountantSignTime;
+        showSignedSignature('accountant', report.accountantSignData, formatDateTime(new Date(report.accountantSignTime)));
+    } else {
+        renderSignatureCanvas('accountant');
+    }
+    
+    // 收銀機資料
+    if (report.registers) {
+        Object.keys(report.registers).forEach(function(k) {
+            var el = document.getElementById(k);
+            if (el) el.value = report.registers[k];
+        });
+    }
+    
+    recalcCashReport();
+}
+
+function clearCashReportFields() {
+    var inputs = document.querySelectorAll('#page-cashReport input[type="number"]');
+    for (var i = 0; i < inputs.length; i++) {
+        inputs[i].value = 0;
+    }
+    document.getElementById('crNote').value = '';
+    // 重置簽名
+    document.getElementById('sig_manager_data').value = '';
+    document.getElementById('sig_manager_time').value = '';
+    document.getElementById('sig_accountant_data').value = '';
+    document.getElementById('sig_accountant_time').value = '';
+    renderSignatureCanvas('manager');
+    renderSignatureCanvas('accountant');
+    recalcCashReport();
+}
+
+function formatDateTime(d) {
+    return d.getFullYear() + '/' + String(d.getMonth()+1).padStart(2,'0') + '/' + 
+           String(d.getDate()).padStart(2,'0') + ' ' + 
+           String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0');
+}
+
+function saveCashReport() {
+    var dateVal = document.getElementById('crDate').value;
+    if (!dateVal) return alert('⚠️ 請選擇會計日');
+    
+    recalcCashReport();
+    
+    var registers = {};
+    var inputs = document.querySelectorAll('#page-cashReport input[id^="cr_"]');
+    for (var i = 0; i < inputs.length; i++) {
+        registers[inputs[i].id] = parseFloat(inputs[i].value) || 0;
+    }
+    
+    var report = {
+        date: dateVal,
+        storeCode: document.getElementById('crStoreCode').value,
+        storeName: document.getElementById('crStoreName').value,
+        note: document.getElementById('crNote').value,
+        managerSignData: document.getElementById('sig_manager_data').value,
+        managerSignTime: document.getElementById('sig_manager_time').value,
+        accountantSignData: document.getElementById('sig_accountant_data').value,
+        accountantSignTime: document.getElementById('sig_accountant_time').value,
+        registers: registers,
+        savedAt: new Date().toISOString()
+    };
+    
+    var reports = loadData('dailyCashReports', {});
+    reports[dateVal] = report;
+    saveData('dailyCashReports', reports);
+    
+    showNotif('💾 已儲存現金日報：' + dateVal);
+    logAction('cashReport', '儲存現金日報：' + dateVal);
+}
+
+// ============= 📸 OCR 圖片辨識 =============
+function processCashReportOCR() {
+    var fileInput = document.getElementById('crImageUpload');
+    if (!fileInput.files || !fileInput.files[0]) {
+        return alert('⚠️ 請先選擇圖片檔');
+    }
+    
+    var file = fileInput.files[0];
+    var statusEl = document.getElementById('crOcrStatus');
+    
+    // 顯示圖片預覽
+    var reader = new FileReader();
+    reader.onload = function(e) {
+        document.getElementById('crPreviewImg').src = e.target.result;
+        document.getElementById('crImagePreview').style.display = 'block';
+    };
+    reader.readAsDataURL(file);
+    
+    if (typeof Tesseract === 'undefined') {
+        statusEl.textContent = '❌ OCR 引擎未載入，請檢查網路連線';
+        return alert('OCR 引擎尚未載入，請確認網路連線後重新整理頁面');
+    }
+    
+    statusEl.textContent = '⏳ 載入辨識引擎中（首次約 10MB）...';
+    
+    Tesseract.recognize(
+        file,
+        'chi_tra+eng',
+        {
+            logger: function(m) {
+                if (m.status === 'recognizing text') {
+                    statusEl.textContent = '🔍 辨識中... ' + Math.round(m.progress * 100) + '%';
+                } else if (m.status === 'loading tesseract core') {
+                    statusEl.textContent = '⏳ 載入引擎核心...';
+                } else if (m.status === 'loading language traineddata') {
+                    statusEl.textContent = '⏳ 下載中文語言包（10MB，首次較慢）...';
+                } else if (m.status === 'initializing api') {
+                    statusEl.textContent = '⏳ 初始化中...';
+                }
+            }
+        }
+    ).then(function(result) {
+        document.getElementById('crOcrResult').value = result.data.text;
+        document.getElementById('crOcrResult').style.display = 'block';
+        document.getElementById('crApplyOcrBtn').style.display = 'inline-block';
+        
+        // 預先解析顯示偵測到的代碼
+        var parsed = parseOcrText(result.data.text);
+        var detectedCodes = Object.keys(parsed);
+        if (detectedCodes.length > 0) {
+            statusEl.innerHTML = '✅ 辨識完成！偵測到 <strong>' + detectedCodes.length + '</strong> 個代碼：' + 
+                detectedCodes.slice(0, 8).join(', ') + (detectedCodes.length > 8 ? ' ... 等' : '');
+        } else {
+            statusEl.innerHTML = '⚠️ 辨識完成但未偵測到代碼。請檢查並手動修改 OCR 文字框，確保代碼（101、102 等）正確';
+        }
+    }).catch(function(err) {
+        statusEl.textContent = '❌ 辨識失敗：' + err.message;
+        console.error('OCR error:', err);
+    });
+}
+
+function applyOcrToForm() {
+    var text = document.getElementById('crOcrResult').value;
+    if (!text) return alert('⚠️ 沒有辨識結果可套用');
+    
+    var parsed = parseOcrText(text);
+    var count = 0;
+    var debugInfo = [];
+    
+    function setVal(id, v) {
+        var el = document.getElementById(id);
+        if (el && v !== undefined && v !== null) { el.value = v; return true; }
+        return false;
+    }
+    
+    // 套用收銀機項目
+    var registerCodes = ['101','102','103','104','104A','104B','105A','105B','106A','106B',
+                         '107','108','109','110','111','112','113','116','117','120'];
+    for (var i = 0; i < registerCodes.length; i++) {
+        var code = registerCodes[i];
+        var d = parsed[code];
+        if (d && d.nums && d.nums.length >= 3) {
+            if (setVal('cr_r1_' + code, d.nums[0])) count++;
+            if (setVal('cr_r2_' + code, d.nums[1])) count++;
+            if (setVal('cr_r3_' + code, d.nums[2])) count++;
+            debugInfo.push(code + ': ' + d.nums.slice(0,3).join('/'));
+        }
+    }
+    
+    // 套用金額項目
+    var amountCodes = ['111A','111B','111D','111E','202','204','206','208','209',
+                       '401','402','407','408','409','410',
+                       '701','704','706','707','708','709','710','712','713','715','717','718','719',
+                       '501','502','601','602',
+                       '801','803A','803B','803C','805','806'];
+    for (var j = 0; j < amountCodes.length; j++) {
+        var c = amountCodes[j];
+        var d2 = parsed[c];
+        if (d2 && d2.nums && d2.nums.length > 0) {
+            // 通常最後一個數字是金額，前面可能是張數
+            var amt = d2.nums[d2.nums.length - 1];
+            if (setVal('cr_amt_' + c, amt)) count++;
+            if (d2.nums.length >= 2) {
+                setVal('cr_cnt_' + c, d2.nums[0]);
+            }
+            debugInfo.push(c + ': ' + d2.nums.join('/'));
+        }
+    }
+    
+    recalcCashReport();
+    
+    if (count === 0) {
+        alert('❌ 沒有辨識到任何欄位\n\n可能原因：\n1. 圖片不清晰，請拍清楚一點\n2. OCR 文字格式無法識別\n3. 請手動修改 OCR 文字後再試\n\n💡 建議：先在「OCR 辨識結果」框中檢查文字，必要時手動修正讓代碼（101、102 等）正確顯示');
+    } else {
+        showNotif('✅ 已套用 ' + count + ' 個欄位，請逐項檢查');
+        console.log('OCR 解析結果：', debugInfo);
+    }
+}
+
+function parseOcrText(text) {
+    var lines = text.split(/\n/);
+    var data = {};
+    
+    // ⚠️ 代碼按長度排序（長的先）：避免 104 誤匹配 104A 開頭
+    var allCodes = [
+        '104A','104B','105A','105B','106A','106B','111A','111B','111D','111E',
+        '803A','803B','803C',
+        '101','102','103','104','105','106','107','108','109','110','111','112','113','116','117','120',
+        '202','204','206','208','209',
+        '401','402','407','408','409','410',
+        '501','502','601','602',
+        '701','704','706','707','708','709','710','712','713','715','717','718','719',
+        '801','802','803','804','805','806'
+    ];
+    
+    for (var i = 0; i < lines.length; i++) {
+        var origLine = lines[i];
+        if (!origLine || origLine.length < 3) continue;
+        
+        // 把 OCR 常見錯誤先修一下
+        var line = origLine.replace(/[Oo]/g, '0').replace(/[Il]/g, '1');
+        
+        // 找這行是否含某個代碼
+        var matchedCode = null;
+        var codePos = -1;
+        for (var j = 0; j < allCodes.length; j++) {
+            var code = allCodes[j];
+            // 找這個代碼在哪個位置（前後必須是非字母數字）
+            var idx = line.search(new RegExp('(?:^|[^A-Za-z0-9])' + code + '(?:[^A-Za-z0-9]|$)'));
+            if (idx !== -1) {
+                matchedCode = code;
+                codePos = idx;
+                break;
+            }
+        }
+        
+        if (!matchedCode) continue;
+        if (data[matchedCode]) continue; // 已經處理過這個代碼
+        
+        // 取代碼之後的內容找數字
+        var afterCode = line.substring(codePos);
+        // 找這之後的所有數字（含負數、千分位逗號）
+        var numMatches = afterCode.match(/-?\d{1,3}(?:[,，]\d{3})+|-?\d+/g);
+        if (!numMatches || numMatches.length === 0) continue;
+        
+        var nums = [];
+        for (var k = 0; k < numMatches.length; k++) {
+            var raw = numMatches[k].replace(/[,，]/g, '');
+            var n = parseFloat(raw);
+            if (isNaN(n)) continue;
+            // 跳過代碼本身（純 3 位數字且等於代碼）
+            if (k === 0 && String(n) === matchedCode.replace(/[A-Z]/g, '')) continue;
+            nums.push(n);
+        }
+        
+        if (nums.length > 0) {
+            data[matchedCode] = { nums: nums, rawLine: origLine };
+        }
+    }
+    return data;
+}
+
+// ============= 🖋️ 電子簽名 =============
+var _signaturePads = {};
+
+function renderSignatureCanvas(role) {
+    var container = document.getElementById('sigContainer_' + role);
+    if (!container) return;
+    container.innerHTML = '<canvas id="sigCanvas_' + role + '" width="800" height="220" style="border:2px dashed #999; background:white; touch-action:none; width:100%; max-width:100%; height:220px; border-radius:4px; display:block; cursor:crosshair;"></canvas>' +
+        '<div style="margin-top:8px;">' +
+        '<button class="btn-confirm" style="padding:8px 16px;font-size:13px;" onclick="confirmSignature(\'' + role + '\')">✅ 確認簽名</button>' +
+        '<button class="btn-secondary" style="margin-left:6px; padding:8px 16px;font-size:13px;" onclick="clearSignature(\'' + role + '\')">🗑️ 清除</button>' +
+        '</div>' +
+        '<div style="margin-top:4px; font-size:11px; color:#6b7280;">💡 請用手指或滑鼠在框內簽名（簽名區域已加大）</div>';
+    setTimeout(function() { initSignaturePad('sigCanvas_' + role); }, 50);
+}
+
+function initSignaturePad(canvasId) {
+    var canvas = document.getElementById(canvasId);
+    if (!canvas) return;
+    var ctx = canvas.getContext('2d');
+    var drawing = false;
+    var lastX = 0, lastY = 0;
+    var hasContent = false;
+    
+    // 白底
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    
+    function getPos(e) {
+        var rect = canvas.getBoundingClientRect();
+        var scaleX = canvas.width / rect.width;
+        var scaleY = canvas.height / rect.height;
+        var x, y;
+        if (e.touches && e.touches[0]) {
+            x = (e.touches[0].clientX - rect.left) * scaleX;
+            y = (e.touches[0].clientY - rect.top) * scaleY;
+        } else {
+            x = (e.clientX - rect.left) * scaleX;
+            y = (e.clientY - rect.top) * scaleY;
+        }
+        return { x: x, y: y };
+    }
+    
+    function start(e) {
+        e.preventDefault();
+        var pos = getPos(e);
+        lastX = pos.x;
+        lastY = pos.y;
+        drawing = true;
+        hasContent = true;
+    }
+    
+    function draw(e) {
+        if (!drawing) return;
+        e.preventDefault();
+        var pos = getPos(e);
+        ctx.beginPath();
+        ctx.moveTo(lastX, lastY);
+        ctx.lineTo(pos.x, pos.y);
+        ctx.strokeStyle = '#000';
+        ctx.lineWidth = 2.5;
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+        ctx.stroke();
+        lastX = pos.x;
+        lastY = pos.y;
+    }
+    
+    function end(e) {
+        drawing = false;
+    }
+    
+    canvas.addEventListener('mousedown', start);
+    canvas.addEventListener('mousemove', draw);
+    canvas.addEventListener('mouseup', end);
+    canvas.addEventListener('mouseleave', end);
+    canvas.addEventListener('touchstart', start, { passive: false });
+    canvas.addEventListener('touchmove', draw, { passive: false });
+    canvas.addEventListener('touchend', end);
+    
+    _signaturePads[canvasId] = {
+        canvas: canvas,
+        ctx: ctx,
+        hasContent: function() { return hasContent; },
+        clear: function() {
+            ctx.fillStyle = '#fff';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            hasContent = false;
+        },
+        toDataURL: function() {
+            return canvas.toDataURL('image/png');
+        }
+    };
+}
+
+function clearSignature(role) {
+    var pad = _signaturePads['sigCanvas_' + role];
+    if (pad) pad.clear();
+}
+
+function confirmSignature(role) {
+    var pad = _signaturePads['sigCanvas_' + role];
+    if (!pad || !pad.hasContent()) {
+        return alert('⚠️ 請先在框內簽名');
+    }
+    
+    var dataUrl = pad.toDataURL();
+    var now = new Date();
+    var timeStr = formatDateTime(now);
+    var isoTime = now.toISOString();
+    
+    showSignedSignature(role, dataUrl, timeStr);
+    
+    document.getElementById('sig_' + role + '_data').value = dataUrl;
+    document.getElementById('sig_' + role + '_time').value = isoTime;
+    
+    var roleName = role === 'manager' ? '店經理' : '會計人員';
+    showNotif('✅ ' + roleName + '簽名完成 ' + timeStr);
+}
+
+function showSignedSignature(role, dataUrl, timeStr) {
+    var container = document.getElementById('sigContainer_' + role);
+    var bgColor = role === 'manager' ? '#fef3c7' : '#dbeafe';
+    var textColor = role === 'manager' ? '#92400e' : '#1e3a8a';
+    container.innerHTML = '<div style="background:white; padding:12px; border-radius:4px; border:2px solid ' + textColor + ';">' +
+        '<img src="' + dataUrl + '" style="max-width:100%; max-height:200px; display:block; margin:0 auto;">' +
+        '</div>' +
+        '<div style="margin-top:8px; font-size:13px; color:' + textColor + '; font-weight:bold;">' +
+        '✅ 已簽名於 ' + timeStr + '</div>' +
+        '<button class="btn-secondary" style="padding:6px 14px; font-size:13px; margin-top:8px;" onclick="resetSignature(\'' + role + '\')">🔄 重新簽名</button>';
+}
+
+function resetSignature(role) {
+    document.getElementById('sig_' + role + '_data').value = '';
+    document.getElementById('sig_' + role + '_time').value = '';
+    renderSignatureCanvas(role);
+}
+
+function printCashReport() {
+    var dateVal = document.getElementById('crDate').value;
+    if (!dateVal) return alert('⚠️ 請選擇會計日');
+    
+    var content = document.querySelector('#page-cashReport .main-content').innerHTML;
+    
+    var styles = '';
+    var styleEls = document.querySelectorAll('style');
+    for (var i = 0; i < styleEls.length; i++) styles += styleEls[i].innerHTML;
+    
+    // 用 iframe 列印
+    var iframe = document.getElementById('cashReportPrintFrame');
+    if (iframe) try { iframe.parentNode.removeChild(iframe); } catch(e) {}
+    iframe = document.createElement('iframe');
+    iframe.id = 'cashReportPrintFrame';
+    iframe.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0;visibility:hidden;';
+    document.body.appendChild(iframe);
+    
+    var html = '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>現金日報表</title>';
+    html += '<style>' + styles + '</style>';
+    html += '<style>';
+    html += '@page { size: A4 portrait; margin: 10mm; }';
+    html += 'body { background:white; color:black; font-family: "Microsoft JhengHei", "PingFang TC", serif; }';
+    html += '.panel-header > div, button, .breadcrumb { display:none !important; }';
+    html += 'input[type="number"], input[type="text"] { border:none !important; background:transparent !important; }';
+    html += 'input[readonly] { background:transparent !important; font-weight:bold; }';
+    html += '.cr-table td { padding:3px 5px; font-size:11px; }';
+    html += '.cr-section-title { font-size:13px; }';
+    html += '* { -webkit-print-color-adjust: exact; print-color-adjust: exact; }';
+    html += '</style></head><body>' + content + '</body></html>';
+    
+    var doc = iframe.contentWindow.document;
+    doc.open();
+    doc.write(html);
+    doc.close();
+    
+    showNotif('🖨️ 準備列印中...');
+    setTimeout(function() {
+        try {
+            iframe.contentWindow.focus();
+            iframe.contentWindow.print();
+        } catch(e) {
+            alert('⚠️ 列印失敗：' + e.message);
+        }
+    }, 500);
+}
+
+function renderLeaveAllocation() {
+    var tbody = document.getElementById('leaveAllocationBody');
+    if (!tbody) return;
+    
+    if (!currentUser || (currentUser.role !== 'admin' && currentUser.role !== 'manager')) {
+        tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:30px;color:#dc2626;">⚠️ 只有管理員與店長可使用此功能</td></tr>';
+        return;
+    }
+    
+    var employees = loadData('employees', defaultEmployees);
+    var stores = loadData('stores', defaultStores);
+    var adjustments = loadData('leaveBalanceAdjustments', {});
+    var compLeaveByEmp = loadData('compLeaveByEmp', {});
+    var leaveList = loadData('leaveList', []);
+    var keyword = (document.getElementById('laSearchInput') || {value:''}).value.toLowerCase();
+    
+    var filtered = employees.filter(function(e) {
+        if (!keyword) return true;
+        return e.name.toLowerCase().includes(keyword) || e.num.toLowerCase().includes(keyword);
+    });
+    
+    if (filtered.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:30px;color:#9ca3af;">📭 尚無員工</td></tr>';
+        return;
+    }
+    
+    var leaveKeys = ['annual', 'sick', 'personal', 'marriage', 'bereavement', 'comp'];
+    
+    var html = '';
+    for (var i = 0; i < filtered.length; i++) {
+        var emp = filtered[i];
+        var store = stores.find(function(s) { return s.id === emp.homeStoreId; });
+        var storeHtml = store 
+            ? '<span style="background:#fef3c7;color:#78350f;padding:2px 6px;border-radius:3px;font-size:11px;">' + store.name + '</span>'
+            : '<span style="color:#9ca3af;font-size:11px;">未指定</span>';
+        
+        var empAdj = adjustments[emp.id] || {};
+        var compH = (compLeaveByEmp[emp.id] && compLeaveByEmp[emp.id].totalHours) || 0;
+        
+        // 計算已使用
+        var used = {};
+        leaveList.forEach(function(x) {
+            if (x.empId === emp.id && (x.status === 'approved' || x.status === 'pending')) {
+                used[x.type] = (used[x.type] || 0) + (x.days || 0);
+            }
+        });
+        
+        html += '<tr>';
+        html += '<td><strong>' + emp.name + '</strong><br><small style="color:#6b7280;">' + emp.num + '</small></td>';
+        html += '<td>' + storeHtml + '</td>';
+        
+        for (var k = 0; k < leaveKeys.length; k++) {
+            var key = leaveKeys[k];
+            var defaultH = LEAVE_TYPES[key].total;
+            var adjH = parseFloat(empAdj[key] || 0);
+            var total = (key === 'comp') ? (compH + adjH) : (defaultH + adjH);
+            var u = used[key] || 0;
+            var rem = Math.max(0, total - u);
+            
+            var color = rem > 0 ? '#059669' : '#9ca3af';
+            html += '<td style="text-align:center; font-size:12px;">';
+            html += '<strong style="color:' + color + '; font-size:14px;">' + rem.toFixed(1) + '</strong> H';
+            if (total > 0) {
+                html += '<br><small style="color:#6b7280;font-size:10px;">已用 ' + u.toFixed(1) + '/' + total.toFixed(1) + '</small>';
+            }
+            html += '</td>';
+        }
+        
+        html += '<td><button class="btn-edit" onclick="openLeaveBalanceModal(\'' + emp.id + '\')">✏️ 調整</button></td>';
+        html += '</tr>';
+    }
+    
+    tbody.innerHTML = html;
+}
+
+function openLeaveBalanceModal(empId) {
+    if (!currentUser || (currentUser.role !== 'admin' && currentUser.role !== 'manager')) {
+        return alert('⚠️ 只有管理員與店長可調整員工假別');
+    }
+    
+    var employees = loadData('employees', defaultEmployees);
+    var emp = employees.find(function(e) { return e.id === empId; });
+    if (!emp) return alert('找不到員工');
+    
+    document.getElementById('lbEmpId').value = empId;
+    
+    document.getElementById('lbModalInfo').innerHTML = 
+        '👤 員工：<strong>' + emp.name + '</strong>（' + emp.num + '）' + 
+        ' ｜ 類型：<strong>' + (emp.empType === 'parttime' ? '工讀' : '正職') + '</strong>';
+    
+    // 取得該員工已使用的假（單位：小時）
+    var list = loadData('leaveList', []);
+    var used = {};
+    list.forEach(function(x) {
+        if (x.empId === empId && (x.status === 'approved' || x.status === 'pending')) {
+            used[x.type] = (used[x.type] || 0) + (x.days || 0);
+        }
+    });
+    
+    // 取得目前該員工的額外調整
+    var adjustments = loadData('leaveBalanceAdjustments', {});
+    var empAdj = adjustments[empId] || {};
+    
+    // 取得補休累積（小時）
+    var compLeave = loadData('compLeaveByEmp', {});
+    var compHours = (compLeave[empId] && compLeave[empId].totalHours) || 0;
+    
+    // 渲染表格
+    var html = '';
+    Object.keys(LEAVE_TYPES).forEach(function(key) {
+        var lt = LEAVE_TYPES[key];
+        var defaultHours = lt.total;
+        var adjustHours = parseFloat(empAdj[key] || 0);
+        var u = used[key] || 0;
+        var total;
+        var defaultDisplay;
+        
+        if (key === 'comp') {
+            defaultDisplay = '<span style="color:#8b5cf6;">' + compHours.toFixed(1) + ' H</span><br><small style="color:#6b7280;font-size:10px;">(超時累積)</small>';
+            total = compHours + adjustHours;
+        } else {
+            defaultDisplay = '<strong>' + defaultHours + ' H</strong>';
+            total = defaultHours + adjustHours;
+        }
+        
+        html += '<tr style="border-bottom:1px solid #e5e7eb;">';
+        html += '<td style="padding:10px;">' + lt.icon + ' <strong>' + lt.name + '</strong></td>';
+        html += '<td style="padding:10px; text-align:center;">' + defaultDisplay + '</td>';
+        html += '<td style="padding:10px; text-align:center;">';
+        html += '<input type="number" id="lbAdj_' + key + '" value="' + adjustHours + '" step="0.5" style="width:70px; padding:4px; text-align:center; border:1px solid #999; border-radius:3px;" onchange="updateLeaveBalanceTotal(\'' + key + '\')">';
+        html += '<div style="font-size:10px; color:#6b7280; margin-top:2px;">小時</div>';
+        html += '</td>';
+        html += '<td style="padding:10px; text-align:center;"><strong id="lbTotal_' + key + '" style="color:#059669; font-size:16px;">' + total.toFixed(1) + '</strong> H</td>';
+        html += '<td style="padding:10px; text-align:center; color:#dc2626;">' + u.toFixed(1) + ' H</td>';
+        html += '</tr>';
+    });
+    
+    // 儲存補休基準供更新使用（直接以小時為單位）
+    document.getElementById('lbTableBody').setAttribute('data-comp-hours', compHours.toFixed(2));
+    document.getElementById('lbTableBody').innerHTML = html;
+    
+    document.getElementById('leaveBalanceModal').classList.remove('hidden');
+}
+
+// 即時更新總計
+function updateLeaveBalanceTotal(key) {
+    var lt = LEAVE_TYPES[key];
+    if (!lt) return;
+    var adj = parseFloat(document.getElementById('lbAdj_' + key).value) || 0;
+    var compHours = parseFloat(document.getElementById('lbTableBody').getAttribute('data-comp-hours') || 0);
+    var total;
+    if (key === 'comp') {
+        total = compHours + adj;
+    } else {
+        total = lt.total + adj;
+    }
+    document.getElementById('lbTotal_' + key).textContent = total.toFixed(1);
+}
+
+function saveLeaveBalanceAdjust() {
+    var empId = document.getElementById('lbEmpId').value;
+    if (!empId) return;
+    
+    var adjustments = loadData('leaveBalanceAdjustments', {});
+    var empAdj = {};
+    Object.keys(LEAVE_TYPES).forEach(function(key) {
+        var v = parseFloat(document.getElementById('lbAdj_' + key).value) || 0;
+        if (v !== 0) empAdj[key] = v;
+    });
+    adjustments[empId] = empAdj;
+    saveData('leaveBalanceAdjustments', adjustments);
+    
+    closeModal('leaveBalanceModal');
+    
+    var emps = loadData('employees', defaultEmployees);
+    var emp = emps.find(function(e) { return e.id === empId; });
+    showNotif('✅ 已更新 ' + (emp ? emp.name : '') + ' 的假別時數');
+    logAction('leave', '調整員工假別：' + (emp ? emp.name : empId));
+}
+
+function resetLeaveBalanceAdjust() {
+    showConfirmDelete('全部歸零？', '<strong>清除所有額外調整</strong><br>各假別回到系統預設值<br><br>此操作只清除額外調整，不影響已使用的請假紀錄。', function() {
+        Object.keys(LEAVE_TYPES).forEach(function(key) {
+            var inp = document.getElementById('lbAdj_' + key);
+            if (inp) {
+                inp.value = 0;
+                updateLeaveBalanceTotal(key);
+            }
+        });
+        showNotif('🔄 已歸零，記得點「儲存調整」儲存');
+    });
+}
+
 function calculateLeaveDays(start, end) {
+    // 注意：函數名保留但內容回傳小時數
     if (!start || !end) return 0;
     var s = new Date(start);
     var e = new Date(end);
-    var diff = (e - s) / (1000 * 60 * 60);
-    return Math.max(0, Math.round(diff / 8 * 10) / 10);
+    var diff = (e - s) / (1000 * 60 * 60);  // 小時
+    return Math.max(0, Math.round(diff * 10) / 10);
 }
 
 function renderLeaveBalance() {
@@ -3428,34 +4710,51 @@ function renderLeaveBalance() {
     if (!elem) return;
     var list = loadData('leaveList', []);
     
+    // 找到當前員工
+    var employees = loadData('employees', defaultEmployees);
+    var myEmp = null;
+    if (currentUser) {
+        myEmp = employees.find(function(e) { return e.num === currentUser.id || e.name === currentUser.name; });
+    }
+    
+    // 取得該員工的額外調整（管理員設定的，單位：小時）
+    var adjustments = loadData('leaveBalanceAdjustments', {});
+    var myAdj = (myEmp && adjustments[myEmp.id]) ? adjustments[myEmp.id] : {};
+    
     var used = {};
     list.forEach(function(x) {
+        if (x.empId && myEmp && x.empId !== myEmp.id) return; // 只看自己的
         if (x.status === 'approved' || x.status === 'pending') {
             used[x.type] = (used[x.type] || 0) + (x.days || 0);
         }
     });
     
-    // 取得代休假總時數（轉換為天數，1天 = 8 小時）
+    // 補休：直接以小時為單位
     var compHours = getCurrentUserCompLeave();
-    var compDays = compHours / DAILY_NORMAL_HOURS;
     
     var html = '';
     Object.keys(LEAVE_TYPES).forEach(function(key) {
         var lt = LEAVE_TYPES[key];
         var u = used[key] || 0;
-        var totalDays = lt.total;
+        var defaultHours = lt.total;
+        var adjustHours = parseFloat(myAdj[key] || 0);
+        var totalHours = defaultHours + adjustHours;
         var extraInfo = '';
         
-        // 代休假特殊處理：總額來自超時工時
         if (key === 'comp') {
-            totalDays = compDays;
-            extraInfo = '<div style="font-size:10px; opacity:0.85; margin-top:2px;">（' + compHours.toFixed(1) + ' H 超時換取）</div>';
+            // 補休：超時累積 + 額外調整
+            totalHours = compHours + adjustHours;
+            extraInfo = '<div style="font-size:10px; opacity:0.85; margin-top:2px;">超時累積 ' + compHours.toFixed(1) + ' H' +
+                       (adjustHours ? '<br>+ 額外 ' + adjustHours.toFixed(1) + ' H' : '') + '</div>';
+        } else if (adjustHours !== 0) {
+            extraInfo = '<div style="font-size:10px; opacity:0.85; margin-top:2px;">預設 ' + defaultHours + 
+                       ' ' + (adjustHours > 0 ? '+' : '') + adjustHours + ' 額外</div>';
         }
         
-        var rem = Math.max(0, totalDays - u);
+        var rem = Math.max(0, totalHours - u);
         html += '<div style="background:linear-gradient(135deg, ' + lt.color + 'aa, ' + lt.color + '); color:white; padding:12px; border-radius:8px; text-align:center;">';
-        html += lt.icon + ' ' + lt.name + '<br><strong style="font-size:22px;">' + rem.toFixed(1) + '</strong> 天';
-        html += '<div style="font-size:11px; opacity:0.9; margin-top:3px;">已用 ' + u.toFixed(1) + '/' + totalDays.toFixed(1) + '</div>';
+        html += lt.icon + ' ' + lt.name + '<br><strong style="font-size:22px;">' + rem.toFixed(1) + '</strong> <span style="font-size:13px;">小時</span>';
+        html += '<div style="font-size:11px; opacity:0.9; margin-top:3px;">已用 ' + u.toFixed(1) + '/' + totalHours.toFixed(1) + ' H</div>';
         html += extraInfo;
         html += '</div>';
     });
@@ -3555,34 +4854,42 @@ function submitLeave() {
     var r = document.getElementById('lvReason').value;
     if (!s || !e || !r) return alert('⚠️ 請填寫時間和事由');
     
-    var days = calculateLeaveDays(s, e);
+    var days = calculateLeaveDays(s, e);  // 此時 days 變數實際為小時數
     var lt = LEAVE_TYPES[t];
     
-    // 檢查餘額
+    // 找到當前員工 + 取得額外調整
+    var employees = loadData('employees', defaultEmployees);
+    var myEmp = currentUser ? employees.find(function(e) { return e.num === currentUser.id || e.name === currentUser.name; }) : null;
+    var adjustments = loadData('leaveBalanceAdjustments', {});
+    var myAdj = (myEmp && adjustments[myEmp.id]) ? adjustments[myEmp.id] : {};
+    
+    // 檢查餘額（單位都是小時）
     var list = loadData('leaveList', []);
     var used = list.reduce(function(sum, x) {
         return (x.type === t && (x.status === 'approved' || x.status === 'pending')) ? sum + (x.days || 0) : sum;
     }, 0);
     
-    // 代休假：動態計算總額（從超時時數）
-    var totalAllowed = lt.total;
+    // 代休假：動態計算總額（從超時時數，本來就是小時）
+    var totalAllowed;
     if (t === 'comp') {
         var compHours = getCurrentUserCompLeave();
-        totalAllowed = compHours / DAILY_NORMAL_HOURS;
+        totalAllowed = compHours + parseFloat(myAdj[t] || 0);
         
         if (totalAllowed === 0) {
             return alert('⚠️ 您目前沒有代休假！\n\n💡 代休假來自於：\n排班時超過 8 小時的工時會自動轉為代休假。\n請先到「排班作業」設定超過 8 小時的班別。');
         }
+    } else {
+        totalAllowed = lt.total + parseFloat(myAdj[t] || 0);
     }
     
     if (used + days > totalAllowed) {
-        return alert('⚠️ ' + lt.name + '餘額不足！\n剩餘：' + (totalAllowed - used).toFixed(1) + ' 天\n申請：' + days.toFixed(1) + ' 天');
+        return alert('⚠️ ' + lt.name + '餘額不足！\n剩餘：' + (totalAllowed - used).toFixed(1) + ' 小時\n申請：' + days.toFixed(1) + ' 小時');
     }
     
     list.unshift({
         id: genId(), applyDate: nowDateStr(), type: t, typeName: lt.name,
         start: s.replace('T',' '), end: e.replace('T',' '), agent: a, reason: r,
-        days: days, status: 'pending'
+        days: days, status: 'pending', empId: myEmp ? myEmp.id : null
     });
     saveData('leaveList', list);
     
@@ -3615,7 +4922,7 @@ function renderLeaveHistory() {
             ? '<button class="btn-confirm" style="padding:4px 10px;font-size:11px;" onclick="approveLeave(\'' + x.id + '\')">核准</button> '
               + '<button class="btn-danger" style="padding:4px 10px;font-size:11px;" onclick="deleteItem(\'leaveList\',\'' + x.id + '\',function(){renderLeaveHistory();renderLeaveBalance();})">刪除</button>'
             : '<button class="btn-secondary" style="padding:4px 10px;font-size:11px;" onclick="deleteItem(\'leaveList\',\'' + x.id + '\',function(){renderLeaveHistory();renderLeaveBalance();})">刪除</button>';
-        html += '<tr><td>' + x.applyDate + '</td><td>' + x.typeName + '(' + x.days.toFixed(1) + '天)</td><td>' + x.start + '</td><td>' + x.end + '</td><td>' + (x.reason || '-') + '</td><td>' + statusHtml + '</td><td>' + opBtn + '</td></tr>';
+        html += '<tr><td>' + x.applyDate + '</td><td>' + x.typeName + '(' + x.days.toFixed(1) + ' H)</td><td>' + x.start + '</td><td>' + x.end + '</td><td>' + (x.reason || '-') + '</td><td>' + statusHtml + '</td><td>' + opBtn + '</td></tr>';
     }
     tbody.innerHTML = html;
 }
@@ -3670,10 +4977,17 @@ function renderEmployeeBasicList() {
             ? '<span class="status-tag" style="background:#fed7aa;color:#9a3412;">工讀</span>'
             : '<span class="status-tag" style="background:#dcfce7;color:#166534;">正職</span>';
         
-        var actBtn = currentUser && currentUser.role === 'admin'
-            ? '<button class="btn-edit" onclick="openEditEmployeeModal(\'' + emp.id + '\')">編輯</button> '
-              + '<button class="btn-danger" onclick="deleteEmployeeFromBasic(\'' + emp.id + '\')">刪除</button>'
-            : '<button class="btn-secondary" style="padding:6px 12px;font-size:12px;">查看</button>';
+        var canEdit = currentUser && (currentUser.role === 'admin' || currentUser.role === 'manager');
+        var actBtn = '';
+        if (currentUser && currentUser.role === 'admin') {
+            actBtn = '<button class="btn-edit" onclick="openEditEmployeeModal(\'' + emp.id + '\')">編輯</button> '
+                   + '<button class="btn-primary" style="background:linear-gradient(to bottom,#a78bfa,#7c3aed);" onclick="openLeaveBalanceModal(\'' + emp.id + '\')">🏖️ 假別</button> '
+                   + '<button class="btn-danger" onclick="deleteEmployeeFromBasic(\'' + emp.id + '\')">刪除</button>';
+        } else if (canEdit) {
+            actBtn = '<button class="btn-primary" style="background:linear-gradient(to bottom,#a78bfa,#7c3aed);" onclick="openLeaveBalanceModal(\'' + emp.id + '\')">🏖️ 假別</button>';
+        } else {
+            actBtn = '<button class="btn-secondary" style="padding:6px 12px;font-size:12px;">查看</button>';
+        }
         html += '<tr><td>' + emp.num + '</td><td><strong>' + emp.name + '</strong></td><td>' + storeHtml + '</td><td>' + (info.position || '時薪人員') + '</td><td>' + typeHtml + '</td><td>' + (info.hireDate || '-') + '</td><td>' + statusHtml + '</td><td>' + actBtn + '</td></tr>';
     }
     tbody.innerHTML = html;
@@ -3837,20 +5151,115 @@ function toggleSalaryFields(type) {
     }
 }
 
+// 🛡️ 通用刪除確認 Modal（iOS 完美相容）
+var _pendingDeleteCallback = null;
+
+function showConfirmDelete(title, message, onConfirm) {
+    _pendingDeleteCallback = onConfirm;
+    document.getElementById('confirmDeleteTitle').textContent = title;
+    document.getElementById('confirmDeleteMsg').innerHTML = message;
+    document.getElementById('confirmDeleteModal').classList.remove('hidden');
+}
+
+function executePendingDelete() {
+    var cb = _pendingDeleteCallback;
+    _pendingDeleteCallback = null;
+    document.getElementById('confirmDeleteModal').classList.add('hidden');
+    if (cb) {
+        try {
+            cb();
+        } catch(err) {
+            alert('❌ 刪除失敗：' + err.message);
+            console.error('Delete error:', err);
+        }
+    }
+}
+
+function cancelPendingDelete() {
+    _pendingDeleteCallback = null;
+    document.getElementById('confirmDeleteModal').classList.add('hidden');
+}
+
 function deleteEmployeeFromBasic(id) {
-    if (!currentUser || currentUser.role !== 'admin') return;
-    if (!confirm('⚠️ 確定刪除此員工？\n此操作不可復原')) return;
+    if (!currentUser || currentUser.role !== 'admin') {
+        alert('⚠️ 只有管理員可刪除員工');
+        return;
+    }
     
     var employees = loadData('employees', defaultEmployees);
-    employees = employees.filter(function(e) { return e.id !== id; });
-    saveData('employees', employees);
+    var emp = employees.find(function(e) { return e.id === id; });
+    if (!emp) {
+        alert('❌ 找不到員工資料');
+        return;
+    }
     
-    var fullInfo = loadData('employeesFullInfo', {});
-    delete fullInfo[id];
-    saveData('employeesFullInfo', fullInfo);
+    // 統計這位員工有多少相關資料
+    var shifts = loadData('shifts', {});
+    var shiftCount = 0;
+    Object.keys(shifts).forEach(function(d) {
+        if (shifts[d][id]) shiftCount++;
+    });
+    var leaveList = loadData('leaveList', []);
+    var leaveCount = leaveList.filter(function(l) { return l.empId === id; }).length;
+    var slips = loadData('salarySlips', {});
+    var slipCount = 0;
+    Object.keys(slips).forEach(function(k) { if (slips[k].empId === id) slipCount++; });
     
-    renderEmployeeBasicList();
-    showNotif('🗑️ 員工已刪除');
+    var msg = '<strong>員工：' + emp.name + ' (' + emp.num + ')</strong><br><br>';
+    msg += '同時會刪除：<br>';
+    msg += '• ' + shiftCount + ' 筆排班紀錄<br>';
+    msg += '• ' + leaveCount + ' 筆請假紀錄<br>';
+    msg += '• ' + slipCount + ' 筆薪資單<br>';
+    msg += '• 加保、加班、補卡、出差等所有相關資料<br><br>';
+    msg += '<strong style="color:#dc2626;">⚠️ 此操作無法復原！</strong>';
+    
+    showConfirmDelete('確定刪除員工？', msg, function() {
+        // 執行刪除
+        var emps2 = loadData('employees', defaultEmployees);
+        emps2 = emps2.filter(function(e) { return e.id !== id; });
+        saveData('employees', emps2);
+        
+        // 刪除完整資料
+        var fullInfo = loadData('employeesFullInfo', {});
+        delete fullInfo[id];
+        saveData('employeesFullInfo', fullInfo);
+        
+        // 刪除該員工的所有排班
+        var shifts2 = loadData('shifts', {});
+        Object.keys(shifts2).forEach(function(date) {
+            if (shifts2[date][id]) delete shifts2[date][id];
+            if (Object.keys(shifts2[date]).length === 0) delete shifts2[date];
+        });
+        saveData('shifts', shifts2);
+        
+        // 刪除相關申請紀錄
+        ['leaveList', 'overtimeList', 'businessTripList', 'cardSuppList', 'abnormalList', 'shiftSwapList', 'insuranceList'].forEach(function(key) {
+            var list = loadData(key, []);
+            list = list.filter(function(x) { return x.empId !== id; });
+            saveData(key, list);
+        });
+        
+        // 刪除代休假/加班費紀錄
+        var compLeave = loadData('compLeaveByEmp', {});
+        delete compLeave[id];
+        saveData('compLeaveByEmp', compLeave);
+        
+        var autoOT = loadData('autoOvertimeByEmp', {});
+        delete autoOT[id];
+        saveData('autoOvertimeByEmp', autoOT);
+        
+        // 刪除薪資單
+        var slips2 = loadData('salarySlips', {});
+        Object.keys(slips2).forEach(function(k) {
+            if (slips2[k].empId === id) delete slips2[k];
+        });
+        saveData('salarySlips', slips2);
+        
+        // 重新渲染
+        renderEmployeeBasicList();
+        showNotif('🗑️ 已刪除員工：' + emp.name);
+        logAction('employee', '刪除員工：' + emp.name + ' (' + emp.num + ')');
+    });
 }
 
 // ============= 班表查詢 =============
@@ -4057,8 +5466,9 @@ function resolveAbnormal(id) {
 var defaultAccounts = [
     { id: 'acc1', username: 'admin',     name: '系統管理員', role: 'admin',   password: '123456', createDate: '2024/01/01', status: 'active' },
     { id: 'acc2', username: 'manager01', name: '店長範例',   role: 'manager', password: '123456', createDate: '2024/01/05', status: 'active' },
-    { id: 'acc3', username: 'staff01',   name: '一般職員',   role: 'staff',   password: '123456', createDate: '2024/01/10', status: 'active' },
-    { id: 'acc4', username: 'user12345', name: '員工示範',   role: 'user',    password: '123456', createDate: '2024/01/15', status: 'active' }
+    { id: 'acc3', username: 'deputy01',  name: '副店長範例', role: 'deputy',  password: '123456', createDate: '2024/01/07', status: 'active' },
+    { id: 'acc4', username: 'staff01',   name: '一般職員',   role: 'staff',   password: '123456', createDate: '2024/01/10', status: 'active' },
+    { id: 'acc5', username: 'user12345', name: '員工示範',   role: 'user',    password: '123456', createDate: '2024/01/15', status: 'active' }
 ];
 
 function renderAccountList() {
@@ -4244,6 +5654,60 @@ function resetSystemParams() {
     saveData('systemParams', DEFAULT_SYS_PARAMS);
     loadSystemParams();
     showNotif('🔄 已還原預設值');
+}
+
+// 🗑️ 清空所有系統資料（回到出廠設定）
+function clearAllSystemData() {
+    if (!currentUser || currentUser.role !== 'admin') {
+        return alert('⚠️ 只有管理員才能清空資料');
+    }
+    
+    // 第一次確認
+    var confirm1 = confirm(
+        '⚠️ 警告：此操作將清空【所有】系統資料！\n\n' +
+        '包括：\n' +
+        '• 員工資料、排班紀錄\n' +
+        '• 請假、加班、補卡、出差申請\n' +
+        '• 薪資單、加保紀錄\n' +
+        '• 門市、帳號、權限設定\n' +
+        '• 系統紀錄、工作清單\n\n' +
+        '清空後將回到出廠預設值！\n\n' +
+        '確定繼續嗎？'
+    );
+    if (!confirm1) return;
+    
+    // 第二次確認（需要輸入文字）
+    var typed = prompt(
+        '⚠️ 最後確認！\n\n' +
+        '此操作【無法復原】。\n' +
+        '請輸入「清空」二字確認執行：'
+    );
+    
+    if (typed !== '清空') {
+        alert('❌ 已取消操作（您輸入的不是「清空」）');
+        return;
+    }
+    
+    // 清空所有資料 keys
+    var keysToRemove = [
+        'works', 'employees', 'employeesFullInfo', 'shifts', 'stores',
+        'accounts', 'overtimeList', 'businessTripList', 'cardSuppList',
+        'leaveList', 'insuranceList', 'shiftSwapList', 'reviewStatus',
+        'abnormalList', 'systemParams', 'systemLogs',
+        'compLeaveByEmp', 'autoOvertimeByEmp', 'currentStoreId',
+        'currentSchedStoreId', 'salarySlips'
+    ];
+    
+    for (var i = 0; i < keysToRemove.length; i++) {
+        try { localStorage.removeItem(keysToRemove[i]); } catch(e) {}
+    }
+    
+    alert('✅ 已清空所有資料！\n\n系統將重新整理回到出廠設定。\n\n預設帳號：\n  admin / 123456（管理員）\n  manager01 / 123456（店長）\n  staff01 / 123456（一般職員）\n  user12345 / 123456（時薪人員）');
+    
+    // 重新整理頁面
+    setTimeout(function() {
+        window.location.reload();
+    }, 500);
 }
 
 // ============= 💰 薪資計算 =============
@@ -5124,34 +6588,66 @@ function deleteStore(id) {
     var stores = loadData('stores', defaultStores);
     var s = stores.find(function(x) { return x.id === id; });
     if (!s) return;
-    if (!confirm('⚠️ 確定刪除門市「' + s.name + '」？\n此動作無法復原！')) return;
     
-    stores = stores.filter(function(x) { return x.id !== id; });
-    saveData('stores', stores);
-    renderStoreList();
-    updateHeaderStore();
-    showNotif('🗑️ 門市已刪除');
-    logAction('store', '刪除門市：' + s.name);
+    // 統計影響範圍
+    var employees = loadData('employees', defaultEmployees);
+    var empCount = employees.filter(function(e) { return e.homeStoreId === id; }).length;
+    
+    var msg = '<strong>門市：' + s.name + ' (' + s.code + ')</strong><br>';
+    msg += '區域：' + s.region + '<br>';
+    msg += '地址：' + (s.address || '-') + '<br><br>';
+    if (empCount > 0) {
+        msg += '<span style="color:#dc2626;">⚠️ 此門市有 ' + empCount + ' 位員工主屬於此</span><br>';
+        msg += '<span style="color:#6b7280;font-size:12px;">（員工不會被刪除，但需要重新分配門市）</span><br><br>';
+    }
+    msg += '<strong style="color:#dc2626;">⚠️ 此操作無法復原！</strong>';
+    
+    showConfirmDelete('確定刪除門市？', msg, function() {
+        var stores2 = loadData('stores', defaultStores);
+        stores2 = stores2.filter(function(x) { return x.id !== id; });
+        saveData('stores', stores2);
+        renderStoreList();
+        updateHeaderStore();
+        showNotif('🗑️ 門市已刪除：' + s.name);
+        logAction('store', '刪除門市：' + s.name);
+    });
 }
 
-// 更新頂部顯示的門市資訊
+// 更新頂部顯示的門市資訊（純文字顯示，不可切換）
 function updateHeaderStore() {
     var stores = loadData('stores', defaultStores);
-    var currentStoreId = loadData('currentStoreId', stores.length > 0 ? stores[0].id : null);
-    var current = stores.find(function(s) { return s.id === currentStoreId; }) || stores[0];
-    
     var elem = document.getElementById('headerStore');
-    if (elem) {
-        if (current) {
-            // 製作下拉選單
-            var options = stores.filter(function(s) { return s.status === 'active'; }).map(function(s) {
-                var sel = s.id === current.id ? ' selected' : '';
-                return '<option value="' + s.id + '"' + sel + '>' + s.region + ' / ' + s.name + '</option>';
-            }).join('');
-            elem.innerHTML = '🏬 <select onchange="switchStore(this.value)" style="background:transparent; border:none; font-size:12px; color:#4b5563; font-weight:bold; cursor:pointer;">' + options + '</select>';
-        } else {
-            elem.innerHTML = '🏬 <span style="color:#9ca3af;">尚無門市</span>';
+    if (!elem) return;
+    
+    // 根據使用者角色決定顯示哪間店
+    var displayStore = null;
+    if (currentUser && currentUser.role === 'admin') {
+        // 管理員：顯示「全部門市」或目前選擇的門市
+        var currentStoreId = loadData('currentStoreId', null);
+        if (currentStoreId) {
+            displayStore = stores.find(function(s) { return s.id === currentStoreId; });
         }
+        if (!displayStore && stores.length > 0) displayStore = stores[0];
+    } else if (currentUser) {
+        // 一般員工：顯示其主屬門市
+        var employees = loadData('employees', defaultEmployees);
+        var matchEmp = employees.find(function(e) {
+            return e.num === currentUser.id || e.name === currentUser.name;
+        });
+        if (matchEmp && matchEmp.homeStoreId) {
+            displayStore = stores.find(function(s) { return s.id === matchEmp.homeStoreId; });
+        }
+        if (!displayStore && stores.length > 0) displayStore = stores[0];
+    }
+    
+    if (displayStore) {
+        elem.innerHTML = '🏬 ' + displayStore.region + ' / ' + displayStore.name;
+        // 記錄當前門市
+        saveData('currentStoreId', displayStore.id);
+    } else if (stores.length === 0) {
+        elem.innerHTML = '🏬 <span style="color:#9ca3af;">尚無門市</span>';
+    } else {
+        elem.innerHTML = '🏬 ' + stores[0].region + ' / ' + stores[0].name;
     }
 }
 
@@ -5259,12 +6755,13 @@ function approveItem(storeKey, id) {
 }
 
 function deleteItem(storeKey, id, callback) {
-    if (!confirm('⚠️ 確定刪除這筆記錄？')) return;
-    var list = loadData(storeKey, []);
-    list = list.filter(function(x) { return x.id !== id; });
-    saveData(storeKey, list);
-    if (callback) callback();
-    showNotif('🗑️ 已刪除');
+    showConfirmDelete('確定刪除這筆記錄？', '此操作無法復原！', function() {
+        var list = loadData(storeKey, []);
+        list = list.filter(function(x) { return x.id !== id; });
+        saveData(storeKey, list);
+        if (callback) callback();
+        showNotif('🗑️ 已刪除');
+    });
 }
 
 // ============= 加保作業 =============
@@ -5832,7 +7329,56 @@ document.addEventListener('keydown', function(e) {
 
 // 初始化
 window.addEventListener('load', function() {
-    document.getElementById('username').focus();
+    var u = document.getElementById('username');
+    if (u) u.focus();
+    
+    // 📱 手機友善：點擊展開選單（不只靠 hover）
+    var menuItems = document.querySelectorAll('.menu-item');
+    for (var i = 0; i < menuItems.length; i++) {
+        (function(item) {
+            item.addEventListener('click', function(e) {
+                // 如果點到子選單項目，不處理（讓子選單自己的 onclick 執行）
+                if (e.target.classList.contains('submenu-item')) return;
+                
+                // 切換目前選單的展開狀態
+                var wasOpen = item.classList.contains('open');
+                
+                // 先關閉所有選單
+                for (var j = 0; j < menuItems.length; j++) {
+                    menuItems[j].classList.remove('open');
+                }
+                
+                // 若原本沒展開 → 展開它
+                if (!wasOpen) {
+                    item.classList.add('open');
+                }
+                
+                e.stopPropagation();
+            });
+        })(menuItems[i]);
+    }
+    
+    // 點外面關閉選單
+    document.addEventListener('click', function(e) {
+        if (!e.target.closest('.menu-item')) {
+            for (var i = 0; i < menuItems.length; i++) {
+                menuItems[i].classList.remove('open');
+            }
+        }
+    });
+    
+    // 點子選單項目後關閉選單
+    var subItems = document.querySelectorAll('.submenu-item');
+    for (var i = 0; i < subItems.length; i++) {
+        subItems[i].addEventListener('click', function() {
+            setTimeout(function() {
+                var allMenus = document.querySelectorAll('.menu-item');
+                for (var j = 0; j < allMenus.length; j++) {
+                    allMenus[j].classList.remove('open');
+                }
+            }, 50);
+        });
+    }
 });
 </script>
 
