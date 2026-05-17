@@ -4008,11 +4008,11 @@ function renderCRIncomeTable() {
         html += '<tr>';
         html += '<td><span style="color:#9ca3af;font-size:10px;">' + item.code + '</span> ' + item.name + '</td>';
         if (item.hasCount) {
-            html += '<td><input type="number" id="cr_cnt_' + item.code + '" value="0"> 張</td>';
+            html += '<td><input type="number" id="cr_cnt_' + item.code + '" oninput="recalcCashReport()" value="0"> 張</td>';
         } else {
             html += '<td style="color:#9ca3af;">-</td>';
         }
-        html += '<td><input type="number" id="cr_amt_' + item.code + '" value="0"></td>';
+        html += '<td><input type="number" id="cr_amt_' + item.code + '" oninput="recalcCashReport()" value="0"></td>';
         html += '</tr>';
     }
     tbody.innerHTML = html;
@@ -4027,11 +4027,11 @@ function renderCRExpenseTable() {
         html += '<tr>';
         html += '<td><span style="color:#9ca3af;font-size:10px;">' + item.code + '</span> ' + item.name + '</td>';
         if (item.hasCount) {
-            html += '<td><input type="number" id="cr_cnt_' + item.code + '" value="0"> 張</td>';
+            html += '<td><input type="number" id="cr_cnt_' + item.code + '" oninput="recalcCashReport()" value="0"> 張</td>';
         } else {
             html += '<td style="color:#9ca3af;">-</td>';
         }
-        html += '<td><input type="number" id="cr_amt_' + item.code + '" value="0"></td>';
+        html += '<td><input type="number" id="cr_amt_' + item.code + '" oninput="recalcCashReport()" value="0"></td>';
         html += '</tr>';
     }
     tbody.innerHTML = html;
@@ -4045,13 +4045,13 @@ function renderCRRefundTable() {
         var item = CR_REFUND_ITEMS[i];
         html += '<tr>';
         html += '<td><span style="color:#9ca3af;font-size:10px;">' + item.code + '</span> ' + item.name + '</td>';
-        html += '<td><input type="number" id="cr_cnt_' + item.code + '" value="0"> 張</td>';
+        html += '<td><input type="number" id="cr_cnt_' + item.code + '" oninput="recalcCashReport()" value="0"> 張</td>';
         if (item.hasRetail) {
-            html += '<td><input type="number" id="cr_retail_' + item.code + '" value="0"></td>';
+            html += '<td><input type="number" id="cr_retail_' + item.code + '" oninput="recalcCashReport()" value="0"></td>';
         } else {
             html += '<td style="color:#9ca3af;">-</td>';
         }
-        html += '<td><input type="number" id="cr_amt_' + item.code + '" value="0"></td>';
+        html += '<td><input type="number" id="cr_amt_' + item.code + '" oninput="recalcCashReport()" value="0"></td>';
         html += '</tr>';
     }
     tbody.innerHTML = html;
