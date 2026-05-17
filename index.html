@@ -1548,6 +1548,7 @@ body { font-family: "Microsoft JhengHei", "微軟正黑體", -apple-system, sans
                         <button class="btn-primary" style="padding:6px 14px; font-size:13px;" onclick="printCashReport()">🖨️ 列印</button>
                         <button class="btn-secondary" style="padding:6px 14px; font-size:13px;" onclick="resetCashAutoCalc()">🔄 重算</button>
                         <button class="btn-primary" style="padding:6px 14px; font-size:13px; background:linear-gradient(to bottom,#a78bfa,#7c3aed);" onclick="openCashReportHistory()">📊 歷史概況</button>
+                        <button class="btn-secondary" style="padding:6px 14px; font-size:13px; background:linear-gradient(to bottom,#22c55e,#16a34a); color:white; border-color:#15803d;" onclick="loadSampleData()">📝 載入範例</button>
                     </div>
                 </div>
                 <div class="panel-body">
@@ -4188,22 +4189,76 @@ function resetCashAutoCalc() {
     showNotif('🔄 已清除所有手動覆寫，全部依公式重新計算');
 }
 
-// 顯示公式說明（讓使用者了解計算邏輯）
+// 顯示公式說明 + 更新計算明細卡（三個卡片：802、804、806）
 function updateFormulaInfo(d) {
-    var elem = document.getElementById('crFormulaInfo');
-    if (!elem) return;
-    
     var diffColor = d.s806 < 0 ? '#dc2626' : (d.s806 > 0 ? '#f59e0b' : '#059669');
     var diffSign = d.s806 > 0 ? '+' : '';
     
-    elem.innerHTML = 
-        '<div style="background:#fef3c7; padding:10px; border-radius:6px; font-size:12px; line-height:1.8;">' +
-        '<strong>📊 即時計算邏輯：</strong><br>' +
-        '<span style="color:#374151;">' +
-        '802 = 801昨日(' + d.s801.toLocaleString() + ') + 收入(' + d.income.toLocaleString() + ') - 代現金(' + d.cashEq.toLocaleString() + ') - 退進貨(' + (d.refund+d.purchase).toLocaleString() + ') - 支出(' + d.expense.toLocaleString() + ') = <strong>' + d.s802.toLocaleString() + '</strong><br>' +
-        '804 = 802(' + d.s802.toLocaleString() + ') - 匯款(' + d.s803.toLocaleString() + ') = <strong>' + d.s804.toLocaleString() + '</strong><br>' +
-        '806 = 805實際(' + d.s805.toLocaleString() + ') - 804應有(' + d.s804.toLocaleString() + ') = <strong style="color:' + diffColor + ';">' + diffSign + d.s806.toLocaleString() + '</strong>' +
-        '</span></div>';
+    // 舊版單行說明（保留向後相容）
+    var elem = document.getElementById('crFormulaInfo');
+    if (elem) {
+        elem.innerHTML = 
+            '<div style="background:#fef3c7; padding:10px; border-radius:6px; font-size:12px; line-height:1.8;">' +
+            '<strong>📊 即時計算邏輯：</strong><br>' +
+            '<span style="color:#374151;">' +
+            '802 = 801昨日(' + d.s801.toLocaleString() + ') + 收入(' + d.income.toLocaleString() + ') - 代現金(' + d.cashEq.toLocaleString() + ') - 退進貨(' + (d.refund+d.purchase).toLocaleString() + ') - 支出(' + d.expense.toLocaleString() + ') = <strong>' + d.s802.toLocaleString() + '</strong><br>' +
+            '804 = 802(' + d.s802.toLocaleString() + ') - 匯款(' + d.s803.toLocaleString() + ') = <strong>' + d.s804.toLocaleString() + '</strong><br>' +
+            '806 = 805實際(' + d.s805.toLocaleString() + ') - 804應有(' + d.s804.toLocaleString() + ') = <strong style="color:' + diffColor + ';">' + diffSign + d.s806.toLocaleString() + '</strong>' +
+            '</span></div>';
+    }
+    
+    // ⭐ 新版三個明細卡片
+    function row(label, value, sign, hint) {
+        var col = sign === '+' ? '#059669' : (sign === '-' ? '#dc2626' : '#1f2937');
+        return '<div style="display:flex; justify-content:space-between; padding:3px 0;">' +
+               '<span style="color:#4b5563;">' + label + (hint ? '<small style="color:#9ca3af;"> ' + hint + '</small>' : '') + '</span>' +
+               '<span style="color:' + col + '; font-weight:bold; font-family:monospace;">' + (sign || '') + ' ' + value.toLocaleString() + '</span>' +
+               '</div>';
+    }
+    
+    // 📊 802 明細
+    var elem802 = document.getElementById('calc802Detail');
+    if (elem802) {
+        var html802 = '';
+        html802 += row('801 昨日留存週轉金', d.s801);
+        html802 += row('銷貨+代收款', d.income, '+', '(111A+B+D+E+202~209)');
+        html802 += row('代現金', d.cashEq, '-', '(401~410)');
+        if (d.refund) html802 += row('現金退貨', d.refund, '-', '(501+502)');
+        if (d.purchase) html802 += row('現金進貨', d.purchase, '-', '(601+602)');
+        if (d.expense) html802 += row('費用支出', d.expense, '-', '(701~719)');
+        html802 += '<hr style="margin:6px 0; border:0; border-top:1px solid #c4b5fd;">';
+        html802 += '<div style="display:flex; justify-content:space-between; font-size:14px; font-weight:bold; color:#5b21b6;">' +
+                   '<span>= 802 應有現金</span>' +
+                   '<span style="font-family:monospace;">$' + d.s802.toLocaleString() + '</span></div>';
+        elem802.innerHTML = html802;
+    }
+    
+    // 📊 804 明細
+    var elem804 = document.getElementById('calc804Detail');
+    if (elem804) {
+        var html804 = '';
+        html804 += row('802 應有現金小計', d.s802);
+        html804 += row('803 本日匯款額', d.s803, '-', '(803A+B+C)');
+        html804 += '<hr style="margin:6px 0; border:0; border-top:1px solid #c4b5fd;">';
+        html804 += '<div style="display:flex; justify-content:space-between; font-size:14px; font-weight:bold; color:#5b21b6;">' +
+                   '<span>= 804 應有週轉金</span>' +
+                   '<span style="font-family:monospace;">$' + d.s804.toLocaleString() + '</span></div>';
+        elem804.innerHTML = html804;
+    }
+    
+    // 📊 806 明細
+    var elem806 = document.getElementById('calc806Detail');
+    if (elem806) {
+        var html806 = '';
+        html806 += row('805 實際清點週轉金', d.s805);
+        html806 += row('804 應有週轉金', d.s804, '-', '');
+        html806 += '<hr style="margin:6px 0; border:0; border-top:1px solid #c4b5fd;">';
+        var diffLabel = d.s806 < 0 ? '🔴 短少' : (d.s806 > 0 ? '🟠 溢餘' : '🟢 平衡');
+        html806 += '<div style="display:flex; justify-content:space-between; font-size:14px; font-weight:bold; color:' + diffColor + ';">' +
+                   '<span>= 806 短/溢 ' + diffLabel + '</span>' +
+                   '<span style="font-family:monospace;">' + diffSign + '$' + d.s806.toLocaleString() + '</span></div>';
+        elem806.innerHTML = html806;
+    }
 }
 
 // 載入資料
@@ -4437,6 +4492,85 @@ function renderCashReportHistory() {
             '<div style="font-size:11px; opacity:0.9;">🖋️ 雙簽完成</div>' +
             '<strong style="font-size:24px;">' + signedCount + '/' + dates.length + '</strong>' +
         '</div>';
+}
+
+// 📝 載入範例資料（依據統一超商現金日報範例）
+// 用此功能可以驗證所有公式正確 - 算出來的結果應該完全等於範例圖片
+function loadSampleData() {
+    if (!confirm('📝 載入範例資料（會覆蓋目前內容）？\n\n範例值來自統一超商現金日報範本，可用來驗證公式正確性。\n\n預期結果：802=210,617, 804=51,617, 806=-10')) return;
+    
+    // 設定店號店名
+    document.getElementById('crStoreCode').value = '285861';
+    document.getElementById('crStoreName').value = '小金';
+    
+    // 移除所有手動標記
+    var allInputs = document.querySelectorAll('#page-cashReport input[type="number"]');
+    for (var i = 0; i < allInputs.length; i++) {
+        allInputs[i].removeAttribute('data-manual');
+        allInputs[i].style.background = '';
+        allInputs[i].style.fontWeight = '';
+        allInputs[i].value = 0;
+    }
+    
+    function set(id, v) {
+        var el = document.getElementById(id);
+        if (el) el.value = v;
+    }
+    
+    // === 📊 收銀機資料（依圖片）===
+    set('cr_r1_101', 58);     set('cr_r2_101', 183);     set('cr_r3_101', 0);
+    set('cr_r1_102', 468503); set('cr_r2_102', 4462041); set('cr_r3_102', 0);
+    set('cr_r1_103', 456662); set('cr_r2_103', 4440922); set('cr_r3_103', 0);
+    set('cr_r1_104A', 11841); set('cr_r2_104A', 21119);  set('cr_r3_104A', 0);
+    set('cr_r1_105A', 0);     set('cr_r2_105A', 35);     set('cr_r3_105A', 0);
+    set('cr_r1_106A', 318);   set('cr_r2_106A', 380);    set('cr_r3_106A', 0);
+    set('cr_r1_112', 2054);   set('cr_r2_112', 1558);    set('cr_r3_112', 0);
+    set('cr_r1_116', 0);      set('cr_r2_116', 492);     set('cr_r3_116', 0);
+    set('cr_r1_109', 655);    set('cr_r2_109', 0);       set('cr_r3_109', 0);
+    set('cr_r1_120', 7814);   set('cr_r2_120', 17654);   set('cr_r3_120', 0);
+    
+    // === 💰 銷貨收入 ===
+    set('cr_amt_111A', 25468);
+    set('cr_amt_111D', 2000);
+    
+    // === 💼 代收款 ===
+    set('cr_cnt_206', 123);
+    set('cr_amt_206', 140488);
+    
+    // === 💳 代現金 ===
+    set('cr_cnt_409', 63);
+    set('cr_amt_409', 7656);
+    
+    // === 🏦 週轉金 ===
+    set('cr_amt_801', 50317);
+    set('cr_amt_803C', 159000);
+    set('cr_amt_805', 51607);
+    
+    document.getElementById('crNote').value = '學「公司實物款項」為申報年度獎金變OPENPOINT點數3,300點之所得。';
+    
+    recalcCashReport();
+    
+    // 驗證結果
+    setTimeout(function() {
+        var s802 = parseFloat(document.getElementById('cr_amt_802').value) || 0;
+        var s803 = parseFloat(document.getElementById('cr_amt_803').value) || 0;
+        var s804 = parseFloat(document.getElementById('cr_amt_804').value) || 0;
+        var s806 = parseFloat(document.getElementById('cr_amt_806').value) || 0;
+        var t111 = parseFloat(document.getElementById('cr_total_111').value) || 0;
+        
+        var allOk = s802 === 210617 && s803 === 159000 && s804 === 51617 && s806 === -10 && t111 === 27468;
+        
+        var msg = '✅ 範例資料載入完成！\n\n📊 公式驗證結果：\n';
+        msg += '─────────────────\n';
+        msg += '111 銷貨合計：' + t111.toLocaleString() + ' (預期 27,468) ' + (t111 === 27468 ? '✅' : '❌') + '\n';
+        msg += '802 應有現金：' + s802.toLocaleString() + ' (預期 210,617) ' + (s802 === 210617 ? '✅' : '❌') + '\n';
+        msg += '803 匯款額：' + s803.toLocaleString() + ' (預期 159,000) ' + (s803 === 159000 ? '✅' : '❌') + '\n';
+        msg += '804 應有週轉金：' + s804.toLocaleString() + ' (預期 51,617) ' + (s804 === 51617 ? '✅' : '❌') + '\n';
+        msg += '806 短/溢：' + s806.toLocaleString() + ' (預期 -10) ' + (s806 === -10 ? '✅' : '❌') + '\n';
+        msg += '─────────────────\n\n';
+        msg += allOk ? '🎉 所有公式正確！\n計算結果完全符合範例圖片！' : '⚠️ 部分公式有誤差';
+        alert(msg);
+    }, 300);
 }
 
 function loadCashReportFromHistory(date) {
