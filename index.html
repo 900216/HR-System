@@ -5130,8 +5130,8 @@ function renderTransferItems(items) {
         html += '<td><input type="number" value="' + (it.retailPrice || 0) + '" oninput="updateTransferItem(' + i + ',\'retailPrice\',this.value);recalcTransferOrder()" style="width:100%;border:1px solid #ddd;padding:3px;font-size:11px;text-align:right;"></td>';
         var costSub = (it.quantity || 0) * (it.costPrice || 0);
         var retailSub = (it.quantity || 0) * (it.retailPrice || 0);
-        html += '<td style="text-align:right; font-weight:bold; background:#fef3c7;">' + costSub.toFixed(2) + '</td>';
-        html += '<td style="text-align:right; font-weight:bold; background:#dcfce7;">' + retailSub.toLocaleString() + '</td>';
+        html += '<td id="toCostSub_' + i + '" style="text-align:right; font-weight:bold; background:#fef3c7;">' + costSub.toFixed(2) + '</td>';
+        html += '<td id="toRetailSub_' + i + '" style="text-align:right; font-weight:bold; background:#dcfce7;">' + retailSub.toLocaleString() + '</td>';
         html += '<td style="text-align:center;"><button type="button" onclick="deleteTransferItem(' + i + ')" style="padding:6px 10px;background:#dc2626;color:white;border:0;border-radius:4px;font-size:12px;cursor:pointer;font-weight:bold;">🗑️</button></td>';
         html += '</tr>';
     }
@@ -5199,8 +5199,16 @@ function recalcTransferOrder() {
     var totalCost = 0, totalRetail = 0;
     for (var i = 0; i < _toCurrentItems.length; i++) {
         var it = _toCurrentItems[i];
-        totalCost += (it.quantity || 0) * (it.costPrice || 0);
-        totalRetail += (it.quantity || 0) * (it.retailPrice || 0);
+        var costSub = (it.quantity || 0) * (it.costPrice || 0);
+        var retailSub = (it.quantity || 0) * (it.retailPrice || 0);
+        totalCost += costSub;
+        totalRetail += retailSub;
+        
+        // 🔑 即時更新每列的成本小計、零售小計儲存格
+        var costSubEl = document.getElementById('toCostSub_' + i);
+        var retailSubEl = document.getElementById('toRetailSub_' + i);
+        if (costSubEl) costSubEl.textContent = costSub.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2});
+        if (retailSubEl) retailSubEl.textContent = retailSub.toLocaleString();
     }
     var countEl = document.getElementById('toItemCount');
     var costEl = document.getElementById('toCostTotal');
