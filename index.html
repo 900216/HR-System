@@ -1590,16 +1590,20 @@ body { font-family: "Microsoft JhengHei", "微軟正黑體", -apple-system, sans
                 <div class="panel-body">
                     <!-- 📷 相機掃描條碼自動入帳 -->
                     <div style="background:linear-gradient(135deg, #dbeafe, #bfdbfe); padding:14px; border-radius:8px; margin-bottom:14px; border:2px solid #3b82f6;">
-                        <div style="font-weight:bold; margin-bottom:10px; color:#1e3a8a; font-size:14px;">📷 相機掃描條碼自動入帳</div>
+                        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:6px; margin-bottom:10px;">
+                            <div style="font-weight:bold; color:#1e3a8a; font-size:14px;">📷 相機掃描條碼自動入帳</div>
+                            <button onclick="openProductCodesLibrary()" style="padding:5px 12px; font-size:12px; background:#7c3aed; color:white; border:0; border-radius:4px; cursor:pointer; font-weight:bold;">📋 條碼商品庫</button>
+                        </div>
                         <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-bottom:8px;">
                             <button class="btn-confirm" style="padding:10px 18px; font-size:14px; background:linear-gradient(to bottom,#10b981,#059669);" onclick="openBarcodeScanner()">📷 啟動相機掃描</button>
                             <span style="font-size:12px; color:#1e40af;">或手動輸入：</span>
-                            <input type="text" id="manualBarcodeInput" placeholder="輸入條碼" onkeypress="if(event.key==='Enter')manualBarcodeAdd()" style="padding:6px 10px; border:1px solid #999; border-radius:3px; width:160px; font-family:monospace;">
+                            <input type="text" id="manualBarcodeInput" placeholder="條碼（前6=品號, 末1=數量）" onkeypress="if(event.key==='Enter')manualBarcodeAdd()" style="padding:6px 10px; border:1px solid #999; border-radius:3px; width:200px; font-family:monospace;">
                             <button onclick="manualBarcodeAdd()" style="padding:7px 14px; background:#3b82f6; color:white; border:0; border-radius:4px; cursor:pointer; font-size:13px; font-weight:bold;">➕ 加入</button>
                         </div>
                         <div id="toScanFeedback" style="font-size:12px; color:#1e40af; min-height:18px; padding:4px 0;">📦 已掃描 0 個品項</div>
                         <div style="font-size:11px; color:#3b82f6; line-height:1.5;">
-                            💡 系統會記憶條碼對應的品名/價格，下次掃描同條碼會自動帶入資訊。重複掃描會自動 +1 數量。
+                            💡 <strong>條碼解析：</strong>前 6 碼 → 品號，末 1 碼 → 數量。<br>
+                            🧠 <strong>智能記憶：</strong>首次掃描需手動填品名/價格，下次掃描相同品號會<strong>自動帶入品名</strong>。
                         </div>
                     </div>
                     
@@ -1717,6 +1721,80 @@ body { font-family: "Microsoft JhengHei", "微軟正黑體", -apple-system, sans
             <div style="margin-top:10px; text-align:center; display:flex; gap:8px; justify-content:center;">
                 <button class="btn-secondary" onclick="switchCameraFacing()" style="padding:8px 14px;">🔄 切換鏡頭</button>
                 <button class="btn-confirm" onclick="closeBarcodeScanner()" style="padding:8px 20px;">✅ 完成掃描</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 📋 條碼商品庫 Modal -->
+    <div id="productCodesLibraryModal" class="modal-overlay hidden">
+        <div class="modal-content" style="max-width:96vw; width:96vw; max-height:92vh; overflow-y:auto;">
+            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; margin-bottom:12px;">
+                <strong style="font-size:16px;">📋 條碼商品庫</strong>
+                <div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap;">
+                    <input type="text" id="pcLibSearch" placeholder="🔍 搜尋品號/品名" oninput="renderProductCodesLibrary()" style="padding:5px 10px; border:1px solid #999; border-radius:3px; width:180px; font-size:13px;">
+                    <button onclick="exportProductCodes()" style="padding:5px 10px; font-size:12px; background:#059669; color:white; border:0; border-radius:3px; cursor:pointer;">💾 匯出</button>
+                    <button onclick="closeModal('productCodesLibraryModal')" style="background:none; border:none; font-size:22px; cursor:pointer; color:#6b7280;">✕</button>
+                </div>
+            </div>
+            <div class="alert-box info">
+                💡 此資料庫會記錄每個品號對應的商品資訊。系統會在掃描相同品號時自動帶入品名與價格。
+            </div>
+            <div style="overflow-x:auto;">
+                <table class="work-table" style="min-width:720px; font-size:12px;">
+                    <thead>
+                        <tr style="background:#7c3aed; color:white;">
+                            <th style="width:80px;">品號</th>
+                            <th>品名</th>
+                            <th style="width:60px;">PMA</th>
+                            <th style="width:55px;">稅</th>
+                            <th style="width:75px;">成本價</th>
+                            <th style="width:75px;">零售價</th>
+                            <th style="width:90px;">最近使用</th>
+                            <th style="width:65px;">操作</th>
+                        </tr>
+                    </thead>
+                    <tbody id="productCodesLibraryBody"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 📋 編輯品號商品 Modal -->
+    <div id="editProductCodeModal" class="modal-overlay hidden">
+        <div class="modal-content" style="max-width:500px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+                <strong style="font-size:16px;">✏️ 編輯商品資料</strong>
+                <button onclick="closeModal('editProductCodeModal')" style="background:none; border:none; font-size:22px; cursor:pointer; color:#6b7280;">✕</button>
+            </div>
+            <div id="editProductCodeInfo" style="background:#fef3c7; padding:10px; border-radius:6px; margin-bottom:10px; font-size:13px;"></div>
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+                <div style="grid-column:1/-1;">
+                    <label style="font-size:12px; color:#374151;">品名：</label>
+                    <input type="text" id="epcProductName" style="width:100%; padding:8px; border:1px solid #ccc; border-radius:4px;">
+                </div>
+                <div>
+                    <label style="font-size:12px; color:#374151;">PMA：</label>
+                    <input type="text" id="epcPma" value="88" style="width:100%; padding:8px; border:1px solid #ccc; border-radius:4px;">
+                </div>
+                <div>
+                    <label style="font-size:12px; color:#374151;">稅別：</label>
+                    <select id="epcTaxFree" style="width:100%; padding:8px; border:1px solid #ccc; border-radius:4px;">
+                        <option value="免">免</option>
+                        <option value="應">應</option>
+                    </select>
+                </div>
+                <div>
+                    <label style="font-size:12px; color:#374151;">成本價：</label>
+                    <input type="number" step="0.01" id="epcCostPrice" style="width:100%; padding:8px; border:1px solid #ccc; border-radius:4px;">
+                </div>
+                <div>
+                    <label style="font-size:12px; color:#374151;">零售價：</label>
+                    <input type="number" id="epcRetailPrice" style="width:100%; padding:8px; border:1px solid #ccc; border-radius:4px;">
+                </div>
+            </div>
+            <div style="margin-top:14px; display:flex; gap:8px; justify-content:flex-end;">
+                <button class="btn-secondary" onclick="closeModal('editProductCodeModal')" style="padding:8px 14px;">取消</button>
+                <button class="btn-confirm" onclick="saveEditProductCode()" style="padding:8px 14px;">💾 儲存</button>
             </div>
         </div>
     </div>
@@ -5066,26 +5144,26 @@ function updateTransferItem(idx, field, value) {
                                   ? (parseFloat(value) || 0)
                                   : value;
     
-    // 🧠 條碼記憶：當條碼存在 + 品名/品號/價格有變動時，存入條碼資料庫
+    // 🧠 條碼商品區記憶：用品號（productCode）為 key 儲存
     var it = _toCurrentItems[idx];
-    if (it.barcode && it.barcode.length >= 6 && 
-        (field === 'productName' || field === 'productCode' || 
-         field === 'costPrice' || field === 'retailPrice' ||
-         field === 'pma' || field === 'taxFree')) {
-        var products = loadData('barcodeProducts', {});
-        products[it.barcode] = {
+    if (it.productCode && it.productCode.length >= 6 && 
+        (field === 'productName' || field === 'costPrice' || field === 'retailPrice' ||
+         field === 'pma' || field === 'taxFree' || field === 'productCode')) {
+        var products = loadData('productCodes', {});
+        products[it.productCode] = {
+            productCode: it.productCode,
             productName: it.productName || '',
-            productCode: it.productCode || '',
-            costPrice: it.costPrice || 0,
-            retailPrice: it.retailPrice || 0,
+            costPrice: parseFloat(it.costPrice) || 0,
+            retailPrice: parseFloat(it.retailPrice) || 0,
             pma: it.pma || '88',
             taxFree: it.taxFree || '免',
+            lastBarcode: it.barcode || '',  // 記錄最近一次掃到的完整條碼
             lastUsed: new Date().toISOString()
         };
-        saveData('barcodeProducts', products);
+        saveData('productCodes', products);
     }
     
-    // 更新統計（如果 quantity 改變）
+    // 更新統計
     if (field === 'quantity') updateScanFeedback();
 }
 
@@ -5488,32 +5566,48 @@ function manualBarcodeAdd() {
 }
 
 // 從條碼加入或更新項目
+// 🔑 條碼格式：前 6 碼 = 品號，最後 1 碼 = 數量
 function addTransferItemFromBarcode(barcode) {
     barcode = String(barcode).trim();
-    if (!barcode) return;
+    if (!barcode || barcode.length < 7) {
+        showNotif('⚠️ 條碼長度不足 7 碼（需前6碼品號+末1碼數量）');
+        return;
+    }
     
-    // 檢查是否已存在 → 數量 +1
+    // 🔑 解析條碼
+    var productCode = barcode.substring(0, 6);          // 前 6 碼 = 品號
+    var qtyChar = barcode.charAt(barcode.length - 1);   // 最後 1 碼 = 數量
+    var qty = parseInt(qtyChar);
+    if (isNaN(qty) || qty === 0) {
+        qty = 1;  // 若末碼不是有效數字或為 0，預設 1
+    }
+    
+    // 檢查是否已存在相同品號 → 數量累加
     for (var i = 0; i < _toCurrentItems.length; i++) {
-        if (_toCurrentItems[i].barcode === barcode) {
-            _toCurrentItems[i].quantity = (parseFloat(_toCurrentItems[i].quantity) || 0) + 1;
+        if (_toCurrentItems[i].productCode === productCode) {
+            _toCurrentItems[i].quantity = (parseFloat(_toCurrentItems[i].quantity) || 0) + qty;
+            // 同時更新最後一個條碼（記錄最新刷取）
+            _toCurrentItems[i].barcode = barcode;
             renderTransferItems(_toCurrentItems);
             recalcTransferOrder();
-            showNotif('🔁 條碼重複，數量 +1 (現為 ' + _toCurrentItems[i].quantity + ')');
+            updateScanFeedback();
+            var pName = _toCurrentItems[i].productName || ('品號 ' + productCode);
+            showNotif('🔁 ' + pName + ' 數量 +' + qty + '（現為 ' + _toCurrentItems[i].quantity + '）');
             return;
         }
     }
     
-    // 查找已記憶的條碼資料
-    var products = loadData('barcodeProducts', {});
-    var product = products[barcode] || {};
+    // 🧠 查找品號資料庫
+    var products = loadData('productCodes', {});
+    var product = products[productCode] || {};
     
     var newItem = {
         barcode: barcode,
         pma: product.pma || '88',
         taxFree: product.taxFree || '免',
-        productCode: product.productCode || '',
+        productCode: productCode,
         productName: product.productName || '',
-        quantity: 1,
+        quantity: qty,
         costPrice: parseFloat(product.costPrice) || 0,
         retailPrice: parseFloat(product.retailPrice) || 0
     };
@@ -5521,11 +5615,12 @@ function addTransferItemFromBarcode(barcode) {
     _toCurrentItems.push(newItem);
     renderTransferItems(_toCurrentItems);
     recalcTransferOrder();
+    updateScanFeedback();
     
     if (product.productName) {
-        showNotif('✅ 帶入：' + product.productName + ' x1');
+        showNotif('✅ ' + product.productName + ' x' + qty + '（品號:' + productCode + '）');
     } else {
-        showNotif('➕ 新條碼已加入，請補品名價格');
+        showNotif('➕ 新品號 ' + productCode + '，數量 ' + qty + '，請補填品名');
     }
 }
 
@@ -5558,6 +5653,154 @@ function updateScanFeedback() {
         totalQty += parseFloat(_toCurrentItems[i].quantity) || 0;
     }
     el.innerHTML = '📦 已掃描 <strong>' + count + '</strong> 個品項，共 <strong>' + totalQty + '</strong> 件';
+}
+
+// ============= 📋 條碼商品庫管理 =============
+var _editingProductCode = null;
+
+function openProductCodesLibrary() {
+    document.getElementById('productCodesLibraryModal').classList.remove('hidden');
+    renderProductCodesLibrary();
+}
+
+function renderProductCodesLibrary() {
+    var tbody = document.getElementById('productCodesLibraryBody');
+    if (!tbody) return;
+    
+    var products = loadData('productCodes', {});
+    var codes = Object.keys(products);
+    var keyword = (document.getElementById('pcLibSearch') || {value:''}).value.toLowerCase();
+    
+    // 排序：最近使用優先
+    codes.sort(function(a, b) {
+        var ta = products[a].lastUsed || '';
+        var tb = products[b].lastUsed || '';
+        return tb.localeCompare(ta);
+    });
+    
+    // 篩選
+    if (keyword) {
+        codes = codes.filter(function(c) {
+            var p = products[c];
+            return c.toLowerCase().includes(keyword) || 
+                   (p.productName || '').toLowerCase().includes(keyword);
+        });
+    }
+    
+    if (codes.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; padding:30px; color:#9ca3af;">📭 條碼商品庫為空。首次掃描並填入品名後會自動加入此庫。</td></tr>';
+        return;
+    }
+    
+    var html = '';
+    for (var i = 0; i < codes.length; i++) {
+        var code = codes[i];
+        var p = products[code];
+        var lastUsed = p.lastUsed ? new Date(p.lastUsed) : null;
+        var lastUsedStr = lastUsed ? (lastUsed.getMonth()+1) + '/' + lastUsed.getDate() : '-';
+        
+        html += '<tr>';
+        html += '<td style="font-family:monospace; font-weight:bold; background:#f3f4f6;">' + code + '</td>';
+        html += '<td>' + (p.productName || '<span style="color:#9ca3af;">（未命名）</span>') + '</td>';
+        html += '<td style="text-align:center;">' + (p.pma || '88') + '</td>';
+        html += '<td style="text-align:center;">' + (p.taxFree || '免') + '</td>';
+        html += '<td style="text-align:right;">' + (parseFloat(p.costPrice) || 0).toFixed(2) + '</td>';
+        html += '<td style="text-align:right;">' + (parseFloat(p.retailPrice) || 0).toLocaleString() + '</td>';
+        html += '<td style="text-align:center; font-size:11px; color:#6b7280;">' + lastUsedStr + '</td>';
+        html += '<td>';
+        html += '<button class="btn-edit" style="padding:3px 8px; font-size:11px;" onclick="editProductCode(\'' + code + '\')">✏️</button> ';
+        html += '<button class="btn-danger" style="padding:3px 8px; font-size:11px;" onclick="deleteProductCode(\'' + code + '\')">🗑️</button>';
+        html += '</td>';
+        html += '</tr>';
+    }
+    tbody.innerHTML = html;
+}
+
+function editProductCode(code) {
+    var products = loadData('productCodes', {});
+    var p = products[code];
+    if (!p) return alert('找不到品號 ' + code);
+    
+    _editingProductCode = code;
+    document.getElementById('editProductCodeInfo').innerHTML = 
+        '<strong>📋 品號：</strong>' + code + 
+        (p.lastBarcode ? '<br><strong>最近條碼：</strong>' + p.lastBarcode : '');
+    document.getElementById('epcProductName').value = p.productName || '';
+    document.getElementById('epcPma').value = p.pma || '88';
+    document.getElementById('epcTaxFree').value = p.taxFree || '免';
+    document.getElementById('epcCostPrice').value = p.costPrice || 0;
+    document.getElementById('epcRetailPrice').value = p.retailPrice || 0;
+    
+    document.getElementById('editProductCodeModal').classList.remove('hidden');
+}
+
+function saveEditProductCode() {
+    if (!_editingProductCode) return;
+    
+    var products = loadData('productCodes', {});
+    var p = products[_editingProductCode] || {};
+    
+    p.productCode = _editingProductCode;
+    p.productName = document.getElementById('epcProductName').value.trim();
+    p.pma = document.getElementById('epcPma').value.trim() || '88';
+    p.taxFree = document.getElementById('epcTaxFree').value;
+    p.costPrice = parseFloat(document.getElementById('epcCostPrice').value) || 0;
+    p.retailPrice = parseFloat(document.getElementById('epcRetailPrice').value) || 0;
+    p.lastUsed = new Date().toISOString();
+    
+    products[_editingProductCode] = p;
+    saveData('productCodes', products);
+    
+    closeModal('editProductCodeModal');
+    renderProductCodesLibrary();
+    showNotif('💾 已更新品號 ' + _editingProductCode);
+    _editingProductCode = null;
+}
+
+function deleteProductCode(code) {
+    showConfirmDelete('刪除品號商品？', '品號：' + code + '<br>此操作無法復原！', function() {
+        var products = loadData('productCodes', {});
+        delete products[code];
+        saveData('productCodes', products);
+        renderProductCodesLibrary();
+        showNotif('🗑️ 已刪除品號 ' + code);
+    });
+}
+
+function exportProductCodes() {
+    var products = loadData('productCodes', {});
+    var codes = Object.keys(products);
+    if (codes.length === 0) return alert('條碼商品庫為空');
+    
+    // 匯出 CSV
+    var csv = '品號,品名,PMA,稅,成本價,零售價,最近條碼,最近使用\n';
+    for (var i = 0; i < codes.length; i++) {
+        var c = codes[i];
+        var p = products[c];
+        var row = [
+            c,
+            (p.productName || '').replace(/,/g, '，'),
+            p.pma || '',
+            p.taxFree || '',
+            p.costPrice || 0,
+            p.retailPrice || 0,
+            p.lastBarcode || '',
+            p.lastUsed || ''
+        ].join(',');
+        csv += row + '\n';
+    }
+    
+    var blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8' });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = '條碼商品庫_' + new Date().toISOString().substring(0,10) + '.csv';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(function() { URL.revokeObjectURL(url); }, 100);
+    
+    showNotif('💾 已匯出 ' + codes.length + ' 個品號');
 }
 
 // 🖨️ 列印
@@ -9015,7 +9258,7 @@ var BACKUP_KEYS = [
     'dailyCashReports',
     'purchaseReceipts',
     'transferOrders',
-    'barcodeProducts',
+    'productCodes',
     'logs',
     'systemSettings',
     'customRolePermissions',
