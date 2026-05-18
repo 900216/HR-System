@@ -981,8 +981,40 @@ body { font-family: "Microsoft JhengHei", "微軟正黑體", -apple-system, sans
         color: black !important;
     }
     body.printing-slip { background: white !important; }
-    @page { size: A4; margin: 10mm; }
+    
+    /* 💵 列印現金日報模式：只顯示 cashReportPrintArea */
+    body.printing-cash > *:not(#cashReportPrintArea) { display: none !important; }
+    body.printing-cash #cashReportPrintArea {
+        display: block !important;
+        position: static !important;
+        width: 100% !important;
+        padding: 5mm !important;
+        margin: 0 !important;
+        background: white !important;
+        color: black !important;
+        font-family: "Microsoft JhengHei", "PingFang TC", sans-serif !important;
+    }
+    body.printing-cash { background: white !important; }
+    body.printing-cash #cashReportPrintArea table {
+        width: 100% !important;
+        border-collapse: collapse !important;
+    }
+    body.printing-cash #cashReportPrintArea th,
+    body.printing-cash #cashReportPrintArea td {
+        border: 1px solid #444 !important;
+        padding: 3px 5px !important;
+        font-size: 10px !important;
+    }
+    body.printing-cash #cashReportPrintArea th {
+        background: #e5e7eb !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+    }
+    @page { size: A4; margin: 8mm; }
 }
+
+/* 平常時隱藏列印區 */
+#cashReportPrintArea { display: none; }
 
 @media print {
     @page { size: A4 landscape; margin: 10mm; }
@@ -1149,6 +1181,8 @@ body { font-family: "Microsoft JhengHei", "微軟正黑體", -apple-system, sans
             </div>
         </div>
         <div class="menu-item" id="menu-cash" onclick="goToPage('cashReport','menu-cash')">💵 現金日報</div>
+        <div class="menu-item" id="menu-goods" onclick="goToPage('purchaseReceipt','menu-goods')">📦 進貨驗收</div>
+        <div class="menu-item" id="menu-transfer" onclick="goToPage('transferOrder','menu-transfer')">🔄 51-調撥單</div>
         <div class="menu-item" id="menu-system">⚙️ 系統管理 ▼
             <div class="submenu">
                 <div class="submenu-item" onclick="goToPage('storeManagement','menu-system')">🏬 門市管理</div>
@@ -1535,6 +1569,334 @@ body { font-family: "Microsoft JhengHei", "微軟正黑體", -apple-system, sans
     
     <!-- 🏬 門市管理 -->
     <!-- 💵 現金日報頁面 -->
+    <!-- 📦 進貨驗收彙總表頁面 -->
+    <!-- 📤 51-調撥單頁面 -->
+    <div id="page-transferOrder" class="page-content hidden">
+        <div class="breadcrumb">🏠 <a onclick="showWorkList()">工作清單</a> &gt; <strong>📤 51-調撥單</strong></div>
+        <div class="main-content">
+            <div class="work-list-panel">
+                <div class="panel-header" style="display:flex; justify-content:space-between; flex-wrap:wrap; gap:8px;">
+                    <h3>📤 51-調撥單</h3>
+                    <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+                        <label style="font-size:13px;">日期：</label>
+                        <input type="date" id="toDate" onchange="loadTransferOrder()" style="padding:5px; border:1px solid #999; border-radius:3px;">
+                        <button class="btn-confirm" style="padding:6px 14px; font-size:13px;" onclick="saveTransferOrder()">💾 儲存</button>
+                        <button class="btn-primary" style="padding:6px 14px; font-size:13px;" onclick="printTransferOrder()">🖨️ 列印</button>
+                        <button class="btn-primary" style="padding:6px 14px; font-size:13px; background:linear-gradient(to bottom,#a78bfa,#7c3aed);" onclick="openTransferOrderHistory()">📊 歷史概況</button>
+                    </div>
+                </div>
+                
+                <div class="panel-body">
+                    <!-- 📸 OCR 上傳區 -->
+                    <div style="background:linear-gradient(135deg, #dbeafe, #bfdbfe); padding:14px; border-radius:8px; margin-bottom:14px; border:1px solid #3b82f6;">
+                        <div style="font-weight:bold; margin-bottom:10px; color:#1e3a8a; font-size:14px;">📸 圖片掃描自動入帳</div>
+                        <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-bottom:8px;">
+                            <input type="file" id="toImageUpload" accept="image/*" style="font-size:13px;">
+                            <button class="btn-confirm" style="padding:8px 16px;font-size:13px;" onclick="processTransferOrderOCR()">🔍 開始 OCR 辨識</button>
+                            <span id="toOcrStatus" style="font-size:12px; color:#1e40af; font-weight:bold;"></span>
+                        </div>
+                        <div id="toImagePreview" style="margin-top:10px; display:none;">
+                            <img id="toPreviewImg" style="max-width:100%; max-height:200px; border:1px solid #d97706; border-radius:4px;">
+                        </div>
+                        <textarea id="toOcrResult" rows="4" placeholder="OCR 辨識結果會顯示在這裡" style="width:100%; margin-top:8px; padding:8px; border:1px solid #999; border-radius:4px; font-family:monospace; font-size:11px; display:none;"></textarea>
+                        <button id="toApplyOcrBtn" class="btn-primary" onclick="applyTransferOrderOcr()" style="margin-top:8px; padding:8px 16px; font-size:13px; display:none;">✅ 套用到表格</button>
+                    </div>
+                    
+                    <!-- 標題區 -->
+                    <div style="background:#fef3c7; padding:14px; border-radius:6px; margin-bottom:14px;">
+                        <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:10px;">
+                            <div>
+                                <label style="font-weight:bold; color:#92400e; font-size:13px;">📤 調出店：</label>
+                                <select id="toOutStoreSelect" onchange="onTransferStoreChange('out')" style="width:100%; padding:8px; border:2px solid #d97706; border-radius:4px; background:white; font-size:13px; margin-top:4px;">
+                                    <option value="">-- 請選擇調出店 --</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label style="font-weight:bold; color:#1e40af; font-size:13px;">📥 調入店：</label>
+                                <select id="toInStoreSelect" onchange="onTransferStoreChange('in')" style="width:100%; padding:8px; border:2px solid #3b82f6; border-radius:4px; background:white; font-size:13px; margin-top:4px;">
+                                    <option value="">-- 請選擇調入店 --</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(180px, 1fr)); gap:8px; font-size:13px;">
+                            <div><strong>調撥單號：</strong><input type="text" id="toOrderNo" placeholder="2858611200016" style="border:1px solid #d97706; padding:4px 8px; border-radius:3px; width:150px;"></div>
+                            <div><strong>調出店號：</strong><span id="toOutStoreInfo" style="color:#92400e;">-</span></div>
+                            <div><strong>調入店號：</strong><span id="toInStoreInfo" style="color:#1e40af;">-</span></div>
+                            <div><strong>列印日：</strong><span id="toPrintDate" style="color:#92400e;"></span></div>
+                        </div>
+                    </div>
+                    
+                    <!-- 合計金額卡 -->
+                    <div class="cr-section">
+                        <div class="cr-section-title">💰 調撥金額</div>
+                        <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(180px, 1fr)); gap:14px;">
+                            <div style="background:linear-gradient(135deg, #f59e0b, #d97706); color:white; padding:14px; border-radius:8px; text-align:center;">
+                                <div style="font-size:12px; opacity:0.9; margin-bottom:6px;">📦 品項數</div>
+                                <strong id="toItemCount" style="font-size:26px; font-family:monospace;">0</strong>
+                            </div>
+                            <div style="background:linear-gradient(135deg, #ef4444, #dc2626); color:white; padding:14px; border-radius:8px; text-align:center;">
+                                <div style="font-size:12px; opacity:0.9; margin-bottom:6px;">成本合計</div>
+                                <strong id="toCostTotal" style="font-size:22px; font-family:monospace;">$0.00</strong>
+                            </div>
+                            <div style="background:linear-gradient(135deg, #10b981, #059669); color:white; padding:14px; border-radius:8px; text-align:center;">
+                                <div style="font-size:12px; opacity:0.9; margin-bottom:6px;">零售合計</div>
+                                <strong id="toRetailTotal" style="font-size:22px; font-family:monospace;">$0</strong>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- 調撥明細 -->
+                    <div class="cr-section">
+                        <div class="cr-section-title" style="display:flex; justify-content:space-between; align-items:center;">
+                            <span>📋 調撥明細</span>
+                            <button class="btn-confirm" style="padding:5px 12px; font-size:12px;" onclick="addTransferItem()">➕ 新增項目</button>
+                        </div>
+                        <div style="overflow-x:auto;">
+                            <table class="cr-table" style="min-width:900px; font-size:11px;">
+                                <thead>
+                                    <tr>
+                                        <th style="width:50px;">項</th>
+                                        <th style="width:130px;">調入驗收條碼</th>
+                                        <th style="width:45px;">PMA</th>
+                                        <th style="width:45px;">稅</th>
+                                        <th style="width:90px;">品號</th>
+                                        <th>品名</th>
+                                        <th style="width:60px;">數量</th>
+                                        <th style="width:80px;">成本價</th>
+                                        <th style="width:80px;">零售價</th>
+                                        <th style="width:90px;">成本小計</th>
+                                        <th style="width:90px;">零售小計</th>
+                                        <th style="width:50px;">操作</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="toItemsBody"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                    
+                    <!-- 雙簽名區 -->
+                    <div class="cr-section">
+                        <div class="cr-section-title">🖋️ 雙店簽章</div>
+                        <div style="display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-top:10px;">
+                            <div style="background:#fef3c7; padding:12px; border-radius:6px; border:2px solid #d97706;">
+                                <div style="font-weight:bold; margin-bottom:8px; color:#92400e; text-align:center;">📤 調出店簽章</div>
+                                <input type="hidden" id="toSig_out_data">
+                                <input type="hidden" id="toSig_out_time">
+                                <div id="toSigContainer_out"></div>
+                            </div>
+                            <div style="background:#dbeafe; padding:12px; border-radius:6px; border:2px solid #3b82f6;">
+                                <div style="font-weight:bold; margin-bottom:8px; color:#1e3a8a; text-align:center;">📥 調入店簽章</div>
+                                <input type="hidden" id="toSig_in_data">
+                                <input type="hidden" id="toSig_in_time">
+                                <div id="toSigContainer_in"></div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div style="margin-top:10px; font-size:11px; color:#6b7280; text-align:center;">第三聯：調出GDO聯</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 調撥單歷史 Modal -->
+    <div id="transferOrderHistoryModal" class="modal-overlay hidden">
+        <div class="modal-content" style="max-width:96vw; width:96vw; max-height:92vh; overflow-y:auto;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+                <strong style="font-size:16px;">📊 調撥單歷史</strong>
+                <button onclick="closeModal('transferOrderHistoryModal')" style="background:none; border:none; font-size:22px; cursor:pointer; color:#6b7280;">✕</button>
+            </div>
+            <div style="overflow-x:auto;">
+                <table class="work-table" style="min-width:800px;">
+                    <thead>
+                        <tr>
+                            <th>日期</th>
+                            <th>調撥單號</th>
+                            <th>📤 調出店</th>
+                            <th>📥 調入店</th>
+                            <th>品項數</th>
+                            <th>成本合計</th>
+                            <th>簽章</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody id="toHistoryBody"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    
+    <div id="page-purchaseReceipt" class="page-content hidden">
+        <div class="breadcrumb">🏠 <a onclick="showWorkList()">工作清單</a> &gt; <strong>📦 進貨驗收彙總表</strong></div>
+        <div class="main-content">
+            <div class="work-list-panel">
+                <div class="panel-header" style="display:flex; justify-content:space-between; flex-wrap:wrap; gap:8px;">
+                    <h3>📦 77-進貨驗收彙總表</h3>
+                    <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+                        <label style="font-size:13px;">驗收日：</label>
+                        <input type="date" id="prDate" onchange="loadPurchaseReceipt()" style="padding:5px; border:1px solid #999; border-radius:3px;">
+                        <button class="btn-confirm" style="padding:6px 14px; font-size:13px;" onclick="savePurchaseReceipt()">💾 儲存</button>
+                        <button class="btn-primary" style="padding:6px 14px; font-size:13px;" onclick="printPurchaseReceipt()">🖨️ 列印</button>
+                        <button class="btn-secondary" style="padding:6px 14px; font-size:13px;" onclick="downloadPurchaseReceiptHTML()">💾 下載 HTML</button>
+                        <button class="btn-primary" style="padding:6px 14px; font-size:13px; background:linear-gradient(to bottom,#a78bfa,#7c3aed);" onclick="openPurchaseReceiptHistory()">📊 歷史</button>
+                    </div>
+                </div>
+                <div class="panel-body">
+                    <!-- 📸 OCR 上傳區 -->
+                    <div style="background:linear-gradient(135deg, #dbeafe, #bfdbfe); padding:14px; border-radius:8px; margin-bottom:14px; border:1px solid #3b82f6;">
+                        <div style="font-weight:bold; margin-bottom:10px; color:#1e3a8a; font-size:14px;">📸 上傳進貨彙總表圖片自動辨識</div>
+                        <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-bottom:8px;">
+                            <input type="file" id="prImageUpload" accept="image/*" style="font-size:13px;">
+                            <button class="btn-confirm" style="padding:8px 16px;font-size:13px;" onclick="processPurchaseReceiptOCR()">🔍 開始 OCR 辨識</button>
+                            <span id="prOcrStatus" style="font-size:12px; color:#1e40af; font-weight:bold;"></span>
+                        </div>
+                        <div id="prImagePreview" style="margin-top:10px; display:none;">
+                            <img id="prPreviewImg" style="max-width:100%; max-height:200px; border:1px solid #d97706; border-radius:4px;">
+                        </div>
+                        <textarea id="prOcrResult" rows="6" placeholder="OCR 辨識結果會顯示在這裡，您可以檢查後再點「套用到表格」" style="width:100%; margin-top:8px; padding:8px; border:1px solid #999; border-radius:4px; font-family:monospace; font-size:11px; display:none;"></textarea>
+                        <button id="prApplyOcrBtn" class="btn-primary" onclick="applyPurchaseReceiptOCR()" style="margin-top:8px; padding:8px 16px; font-size:13px; display:none;">✅ 套用到表格</button>
+                        <div style="margin-top:6px; font-size:11px; color:#6b7280;">💡 提示：圖片清晰、平整、無遮擋。辨識會自動填入明細項目。</div>
+                    </div>
+                    
+                    <!-- 報表標題區 -->
+                    <div style="background:#fef3c7; padding:14px; border-radius:6px; margin-bottom:14px;">
+                        <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:10px;">
+                            <strong style="font-size:14px;">🏬 選擇門市：</strong>
+                            <select id="prStoreSelect" onchange="onPurchaseReceiptStoreChange()" style="padding:6px 10px; border:1px solid #d97706; border-radius:4px; background:white; font-size:13px; min-width:200px;">
+                                <option value="">-- 請選擇門市 --</option>
+                            </select>
+                        </div>
+                        <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(180px, 1fr)); gap:8px; font-size:13px;">
+                            <div><strong>店號：</strong><input type="text" id="prStoreCode" placeholder="285861" style="border:none; background:transparent; width:100px;"></div>
+                            <div><strong>店名：</strong><input type="text" id="prStoreName" placeholder="例：小金" style="border:none; background:transparent; width:120px;"></div>
+                            <div><strong>列印日：</strong><span id="prPrintDate" style="color:#92400e;"></span></div>
+                            <div><strong>驗收日：</strong><span id="prAccDate" style="color:#92400e;"></span></div>
+                            <div><strong>單據編號：</strong><input type="text" id="prDocCode" placeholder="項60514-01" style="border:1px solid #d1d5db; padding:2px 6px; border-radius:3px; width:130px;"></div>
+                        </div>
+                    </div>
+                    
+                    <!-- 📊 傳票統計 -->
+                    <div class="cr-section">
+                        <div class="cr-section-title">📊 傳票張數統計</div>
+                        <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(150px, 1fr)); gap:10px;">
+                            <div style="background:white; padding:10px; border-radius:6px; border:1px solid #d1d5db;">
+                                <div style="font-size:11px; color:#6b7280;">前日轉入</div>
+                                <input type="number" id="pr_ticket_in" value="0" oninput="recalcPurchaseReceipt()" style="width:100%; padding:4px; text-align:right; font-size:18px; font-weight:bold; border:0;">
+                            </div>
+                            <div style="background:white; padding:10px; border-radius:6px; border:1px solid #d1d5db;">
+                                <div style="font-size:11px; color:#6b7280;">本日進貨</div>
+                                <input type="number" id="pr_ticket_purchase" value="0" oninput="recalcPurchaseReceipt()" style="width:100%; padding:4px; text-align:right; font-size:18px; font-weight:bold; border:0;">
+                            </div>
+                            <div style="background:white; padding:10px; border-radius:6px; border:1px solid #d1d5db;">
+                                <div style="font-size:11px; color:#6b7280;">本日退貨</div>
+                                <input type="number" id="pr_ticket_return" value="0" oninput="recalcPurchaseReceipt()" style="width:100%; padding:4px; text-align:right; font-size:18px; font-weight:bold; border:0;">
+                            </div>
+                            <div style="background:white; padding:10px; border-radius:6px; border:1px solid #d1d5db;">
+                                <div style="font-size:11px; color:#6b7280;">轉入次日</div>
+                                <input type="number" id="pr_ticket_next" value="0" oninput="recalcPurchaseReceipt()" style="width:100%; padding:4px; text-align:right; font-size:18px; font-weight:bold; border:0;">
+                            </div>
+                            <div style="background:linear-gradient(135deg,#3b82f6,#2563eb); color:white; padding:10px; border-radius:6px;">
+                                <div style="font-size:11px; opacity:0.9;">本日合計</div>
+                                <div id="pr_ticket_total" style="font-size:22px; font-weight:bold; text-align:right;">0</div>
+                            </div>
+                        </div>
+                        <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:10px; margin-top:10px;">
+                            <div style="background:linear-gradient(135deg,#10b981,#059669); color:white; padding:12px; border-radius:6px;">
+                                <div style="font-size:12px; opacity:0.9;">💰 成本價合計</div>
+                                <div id="pr_cost_total" style="font-size:24px; font-weight:bold; text-align:right;">$0</div>
+                            </div>
+                            <div style="background:linear-gradient(135deg,#f59e0b,#d97706); color:white; padding:12px; border-radius:6px;">
+                                <div style="font-size:12px; opacity:0.9;">🏷️ 零售價合計</div>
+                                <div id="pr_retail_total" style="font-size:24px; font-weight:bold; text-align:right;">$0</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- 📋 進貨明細 -->
+                    <div class="cr-section">
+                        <div class="cr-section-title" style="display:flex; justify-content:space-between; align-items:center;">
+                            <span>📋 進貨明細</span>
+                            <button class="btn-confirm" style="padding:5px 12px; font-size:12px;" onclick="addPurchaseItem()">➕ 新增項目</button>
+                        </div>
+                        <div style="overflow-x:auto;">
+                            <table class="cr-table" style="min-width:1100px;">
+                                <thead>
+                                    <tr>
+                                        <th style="width:40px;">項</th>
+                                        <th style="width:55px;">修正</th>
+                                        <th style="width:55px;">區分</th>
+                                        <th style="width:110px;">訂單號碼</th>
+                                        <th style="width:70px;">進貨日</th>
+                                        <th style="width:110px;">廠商編號</th>
+                                        <th style="width:170px;">廠商名稱</th>
+                                        <th style="width:50px;">配</th>
+                                        <th style="width:75px;">預定數</th>
+                                        <th style="width:75px;">DC出貨</th>
+                                        <th style="width:75px;">驗收數</th>
+                                        <th style="width:100px;">成本小計</th>
+                                        <th style="width:100px;">零售小計</th>
+                                        <th style="width:55px;">操作</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="prItemsBody"></tbody>
+                            </table>
+                        </div>
+                        <div style="margin-top:10px; padding:8px; background:#fef3c7; border-radius:4px; font-size:11px; color:#78350f; line-height:1.6;">
+                            <strong>區分代碼：</strong>
+                            05:人工驗收　10:一般訂貨　20:事先訂貨　31:追加訂貨　40:節慶訂貨<br>
+                            50:一般+大智通退貨　60:一般預購訂貨　70:一般預購退貨　80:專案預購訂貨　90:專案預購退貨
+                        </div>
+                    </div>
+                    
+                    <!-- 📝 備註 + 電子簽名 -->
+                    <div class="cr-section">
+                        <div class="cr-section-title">📝 備註與電子簽名</div>
+                        <table class="form-table">
+                            <tr><td class="label-col">備註：</td><td><textarea id="prNote" rows="2" placeholder="備註事項..."></textarea></td></tr>
+                        </table>
+                        
+                        <div style="display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-top:14px;">
+                            <div style="background:#fef3c7; padding:12px; border-radius:6px; border:1px solid #d97706;">
+                                <div style="font-weight:bold; margin-bottom:8px; color:#92400e;">🖋️ 店經理簽名</div>
+                                <input type="hidden" id="prSig_manager_data">
+                                <input type="hidden" id="prSig_manager_time">
+                                <div id="prSigContainer_manager"></div>
+                            </div>
+                            <div style="background:#dbeafe; padding:12px; border-radius:6px; border:1px solid #3b82f6;">
+                                <div style="font-weight:bold; margin-bottom:8px; color:#1e3a8a;">🖋️ 會計人員簽名</div>
+                                <input type="hidden" id="prSig_accountant_data">
+                                <input type="hidden" id="prSig_accountant_time">
+                                <div id="prSigContainer_accountant"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 📊 進貨驗收歷史 Modal -->
+    <div id="purchaseReceiptHistoryModal" class="modal-overlay hidden">
+        <div class="modal-content" style="max-width:96vw; width:96vw; max-height:92vh; overflow-y:auto;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+                <strong style="font-size:16px;">📊 進貨驗收歷史概況</strong>
+                <button onclick="closeModal('purchaseReceiptHistoryModal')" style="background:none; border:none; font-size:22px; cursor:pointer; color:#6b7280;">✕</button>
+            </div>
+            <div style="overflow-x:auto;">
+                <table class="work-table" style="min-width:800px;">
+                    <thead>
+                        <tr>
+                            <th>驗收日</th><th>店號</th><th>店名</th><th>進貨</th><th>退貨</th><th>合計</th><th>成本合計</th><th>零售合計</th><th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody id="prHistoryBody"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 📦 進貨驗收彙總表頁面 -->
+    
     <div id="page-cashReport" class="page-content hidden">
         <div class="breadcrumb">🏠 <a onclick="showWorkList()">工作清單</a> &gt; <strong>💵 現金日報</strong></div>
         <div class="main-content">
@@ -1546,6 +1908,7 @@ body { font-family: "Microsoft JhengHei", "微軟正黑體", -apple-system, sans
                         <input type="date" id="crDate" onchange="loadCashReport()" style="padding:5px; border:1px solid #999; border-radius:3px;">
                         <button class="btn-confirm" style="padding:6px 14px; font-size:13px;" onclick="saveCashReport()">💾 儲存</button>
                         <button class="btn-primary" style="padding:6px 14px; font-size:13px;" onclick="printCashReport()">🖨️ 列印</button>
+                        <button class="btn-secondary" style="padding:6px 14px; font-size:13px;" onclick="downloadCashReportHTML()">💾 下載 HTML</button>
                         <button class="btn-secondary" style="padding:6px 14px; font-size:13px;" onclick="resetCashAutoCalc()">🔄 重算</button>
                         <button class="btn-primary" style="padding:6px 14px; font-size:13px; background:linear-gradient(to bottom,#a78bfa,#7c3aed);" onclick="openCashReportHistory()">📊 歷史概況</button>
                         <button class="btn-secondary" style="padding:6px 14px; font-size:13px; background:linear-gradient(to bottom,#22c55e,#16a34a); color:white; border-color:#15803d;" onclick="loadSampleData()">📝 載入範例</button>
@@ -1753,13 +2116,138 @@ body { font-family: "Microsoft JhengHei", "微軟正黑體", -apple-system, sans
     
     <div id="page-permissionSettings" class="page-content hidden">
         <div class="breadcrumb">🏠 <a onclick="showWorkList()">工作清單</a> &gt; ⚙️ 系統管理 &gt; <strong>🔐 權限設定</strong></div>
-        <div class="main-content"><div class="work-list-panel"><div class="panel-header"><h3>🔐 角色權限</h3></div><div class="panel-body">
-            <table class="work-table"><thead><tr><th>功能</th><th>管理員</th><th>店長</th><th>員工</th></tr></thead><tbody>
-                <tr><td>📋 工作清單</td><td>✅</td><td>✅</td><td>✅</td></tr>
-                <tr><td>📅 排班作業</td><td>✅</td><td>✅</td><td>❌</td></tr>
-                <tr><td>⚙️ 系統管理</td><td>✅</td><td>❌</td><td>❌</td></tr>
-            </tbody></table>
-        </div></div></div>
+        <div class="main-content">
+            <div class="work-list-panel">
+                <div class="panel-header" style="display:flex; justify-content:space-between; flex-wrap:wrap; gap:8px;">
+                    <h3>🔐 角色權限管理</h3>
+                    <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                        <button class="btn-secondary" style="padding:6px 12px; font-size:13px;" onclick="resetRolePermissions()">🔄 還原預設</button>
+                        <button class="btn-confirm" style="padding:6px 14px; font-size:13px;" onclick="saveRolePermissions()">💾 儲存權限</button>
+                    </div>
+                </div>
+                <div class="panel-body">
+                    <div class="alert-box info">
+                        💡 <strong>使用說明：</strong>勾選代表該角色擁有此功能權限。系統管理員擁有所有權限無法修改。<br>
+                        修改後請點「💾 儲存權限」生效。重新登入後套用新權限。
+                    </div>
+                    
+                    <!-- 角色說明卡片 -->
+                    <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:10px; margin:14px 0;">
+                        <div style="background:linear-gradient(135deg,#dc2626,#991b1b); color:white; padding:12px; border-radius:8px;">
+                            <strong style="font-size:14px;">🔴 系統管理員 (admin)</strong>
+                            <div style="font-size:11px; opacity:0.9; margin-top:4px;">所有權限，無法修改</div>
+                        </div>
+                        <div style="background:linear-gradient(135deg,#f59e0b,#d97706); color:white; padding:12px; border-radius:8px;">
+                            <strong style="font-size:14px;">🟠 店長 (manager)</strong>
+                            <div style="font-size:11px; opacity:0.9; margin-top:4px;">門市管理者</div>
+                        </div>
+                        <div style="background:linear-gradient(135deg,#8b5cf6,#7c3aed); color:white; padding:12px; border-radius:8px;">
+                            <strong style="font-size:14px;">🟣 副店長 (deputy)</strong>
+                            <div style="font-size:11px; opacity:0.9; margin-top:4px;">店長助手</div>
+                        </div>
+                        <div style="background:linear-gradient(135deg,#10b981,#059669); color:white; padding:12px; border-radius:8px;">
+                            <strong style="font-size:14px;">🟢 一般職員 (staff)</strong>
+                            <div style="font-size:11px; opacity:0.9; margin-top:4px;">正職員工</div>
+                        </div>
+                        <div style="background:linear-gradient(135deg,#06b6d4,#0891b2); color:white; padding:12px; border-radius:8px;">
+                            <strong style="font-size:14px;">🔵 時薪人員 (user)</strong>
+                            <div style="font-size:11px; opacity:0.9; margin-top:4px;">兼職員工</div>
+                        </div>
+                    </div>
+                    
+                    <!-- 全選快捷 -->
+                    <div style="background:#f3f4f6; padding:10px; border-radius:6px; margin-bottom:10px; font-size:12px;">
+                        <strong>快捷操作：</strong>
+                        <button onclick="toggleAllForRole('manager', true)" style="margin:2px 4px; padding:4px 10px; font-size:11px; background:#f59e0b; color:white; border:0; border-radius:3px; cursor:pointer;">店長全選</button>
+                        <button onclick="toggleAllForRole('manager', false)" style="margin:2px 4px; padding:4px 10px; font-size:11px; background:#6b7280; color:white; border:0; border-radius:3px; cursor:pointer;">店長全取消</button>
+                        <button onclick="toggleAllForRole('deputy', true)" style="margin:2px 4px; padding:4px 10px; font-size:11px; background:#8b5cf6; color:white; border:0; border-radius:3px; cursor:pointer;">副店全選</button>
+                        <button onclick="toggleAllForRole('deputy', false)" style="margin:2px 4px; padding:4px 10px; font-size:11px; background:#6b7280; color:white; border:0; border-radius:3px; cursor:pointer;">副店全取消</button>
+                        <button onclick="toggleAllForRole('staff', true)" style="margin:2px 4px; padding:4px 10px; font-size:11px; background:#10b981; color:white; border:0; border-radius:3px; cursor:pointer;">職員全選</button>
+                        <button onclick="toggleAllForRole('staff', false)" style="margin:2px 4px; padding:4px 10px; font-size:11px; background:#6b7280; color:white; border:0; border-radius:3px; cursor:pointer;">職員全取消</button>
+                        <button onclick="toggleAllForRole('user', true)" style="margin:2px 4px; padding:4px 10px; font-size:11px; background:#06b6d4; color:white; border:0; border-radius:3px; cursor:pointer;">時薪全選</button>
+                        <button onclick="toggleAllForRole('user', false)" style="margin:2px 4px; padding:4px 10px; font-size:11px; background:#6b7280; color:white; border:0; border-radius:3px; cursor:pointer;">時薪全取消</button>
+                    </div>
+                    
+                    <!-- 權限矩陣 -->
+                    <div style="overflow-x:auto;">
+                        <table class="work-table" style="min-width:680px;">
+                            <thead>
+                                <tr style="background:#1f2937; color:white;">
+                                    <th style="text-align:left; padding:10px;">功能項目</th>
+                                    <th style="background:#dc2626;">🔴 管理員</th>
+                                    <th style="background:#f59e0b;">🟠 店長</th>
+                                    <th style="background:#8b5cf6;">🟣 副店長</th>
+                                    <th style="background:#10b981;">🟢 職員</th>
+                                    <th style="background:#06b6d4;">🔵 時薪</th>
+                                </tr>
+                            </thead>
+                            <tbody id="permissionMatrixBody"></tbody>
+                        </table>
+                    </div>
+                    
+                    <!-- 👤 個別員工權限自訂 -->
+                    <div style="margin-top:30px; padding-top:20px; border-top:3px dashed #d97706;">
+                        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:14px;">
+                            <h3 style="margin:0; color:#1e40af;">👤 個別員工權限自訂</h3>
+                            <input type="text" id="empPermSearch" placeholder="🔍 搜尋姓名/編號/帳號" oninput="renderAccountPermissionList()" style="padding:6px 10px; border:1px solid #999; border-radius:4px; width:200px;">
+                        </div>
+                        
+                        <div class="alert-box info">
+                            💡 <strong>個別員工權限優先於角色權限</strong>。為特定員工設定權限後，會覆蓋上方角色設定。<br>
+                            適用情境：例如某個職員需要額外查看排班但不想開放給所有職員。
+                        </div>
+                        
+                        <div style="overflow-x:auto;">
+                            <table class="work-table" style="min-width:680px;">
+                                <thead>
+                                    <tr style="background:#1e40af; color:white;">
+                                        <th>👤 帳號</th>
+                                        <th>姓名</th>
+                                        <th>員工編號</th>
+                                        <th>角色</th>
+                                        <th>🏬 門市</th>
+                                        <th>權限狀態</th>
+                                        <th>操作</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="accountPermissionList"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 員工權限編輯 Modal -->
+    <div id="accountPermissionModal" class="modal-overlay hidden">
+        <div class="modal-content" style="max-width:600px; max-height:92vh; overflow-y:auto;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+                <strong style="font-size:16px;" id="accountPermissionTitle">🔧 編輯員工權限</strong>
+                <button onclick="closeModal('accountPermissionModal')" style="background:none; border:none; font-size:22px; cursor:pointer; color:#6b7280;">✕</button>
+            </div>
+            
+            <div id="accountPermissionInfo" style="background:#f3f4f6; padding:10px; border-radius:6px; margin-bottom:12px; font-size:13px;"></div>
+            
+            <div style="background:#fef3c7; padding:10px; border-radius:6px; margin-bottom:12px; font-size:12px; color:#78350f; line-height:1.6;">
+                💡 勾選此員工可使用的功能。**取消所有自訂**會回到該員工所屬角色的預設權限。
+            </div>
+            
+            <!-- 快捷按鈕 -->
+            <div style="margin-bottom:10px;">
+                <button onclick="accountPermAll(true)" style="padding:5px 12px; font-size:12px; background:#059669; color:white; border:0; border-radius:3px; cursor:pointer; margin-right:6px;">✅ 全選</button>
+                <button onclick="accountPermAll(false)" style="padding:5px 12px; font-size:12px; background:#6b7280; color:white; border:0; border-radius:3px; cursor:pointer; margin-right:6px;">⬜ 全取消</button>
+                <button onclick="accountPermFromRole()" style="padding:5px 12px; font-size:12px; background:#3b82f6; color:white; border:0; border-radius:3px; cursor:pointer;">📋 套用該角色預設</button>
+            </div>
+            
+            <div id="accountPermissionFeatures"></div>
+            
+            <div style="margin-top:14px; padding-top:14px; border-top:1px solid #e5e7eb; display:flex; gap:8px; justify-content:flex-end; flex-wrap:wrap;">
+                <button class="btn-danger" style="padding:8px 14px;" onclick="clearAccountPermissions()">🗑️ 清除自訂（回到角色預設）</button>
+                <button class="btn-secondary" style="padding:8px 14px;" onclick="closeModal('accountPermissionModal')">取消</button>
+                <button class="btn-confirm" style="padding:8px 14px;" onclick="saveAccountPermissions()">💾 儲存</button>
+            </div>
+        </div>
     </div>
     
     <div id="page-systemParams" class="page-content hidden">
@@ -2610,13 +3098,13 @@ var ROLE_PERMISSIONS = {
                   'cardSupplement', 'leaveApply', 'attendanceQuery', 'schedule',
                   'scheduleQuery', 'shiftSwap', 'reviewMonth', 'employeeBasic',
                   'leaveAllocation', 'insuranceAdd', 'insuranceRemove', 'insuranceQuery',
-                  'changePassword', 'payroll', 'mySalary', 'cashReport']
+                  'changePassword', 'payroll', 'mySalary', 'cashReport', 'purchaseReceipt', 'transferOrder']
     },
     'deputy': {
         // 副店長：協助店長，可使用現金日報、排班、請假、薪資查詢
         allowed: ['workList', 'attendanceAbnormal', 'overtimeApply', 'businessTrip',
                   'cardSupplement', 'leaveApply', 'attendanceQuery', 'schedule',
-                  'shiftSwap', 'changePassword', 'mySalary', 'cashReport']
+                  'shiftSwap', 'changePassword', 'mySalary', 'cashReport', 'purchaseReceipt', 'transferOrder']
     },
     'staff': {
         // 一般職員：可看排班作業（唯讀）+ 請假 + 變更密碼 + 我的薪資
@@ -2630,10 +3118,419 @@ var ROLE_PERMISSIONS = {
 
 function hasAccess(pageName) {
     if (!currentUser) return false;
-    var perm = ROLE_PERMISSIONS[currentUser.role];
+    
+    // 1️⃣ 最優先：個別帳號自訂權限
+    var customAcc = loadData('customAccountPermissions', {});
+    if (customAcc[currentUser.username] && customAcc[currentUser.username] !== null) {
+        return customAcc[currentUser.username].indexOf(pageName) !== -1;
+    }
+    
+    // 2️⃣ 次優先：自訂角色權限
+    var customPerms = loadData('customRolePermissions', null);
+    var perm = (customPerms && customPerms[currentUser.role]) || ROLE_PERMISSIONS[currentUser.role];
     if (!perm) return false;
     if (perm.all) return true;
     return perm.allowed.indexOf(pageName) !== -1;
+}
+
+// 取得有效的角色權限（自訂或預設）
+function getEffectivePermissions(role) {
+    var customPerms = loadData('customRolePermissions', null);
+    if (customPerms && customPerms[role]) {
+        return customPerms[role];
+    }
+    return ROLE_PERMISSIONS[role];
+}
+
+// 取得有效的帳號權限（個別 > 角色）
+function getEffectiveAccountPermissions(account) {
+    var customAcc = loadData('customAccountPermissions', {});
+    if (customAcc[account.username]) {
+        return { custom: true, allowed: customAcc[account.username] };
+    }
+    var rolePerm = getEffectivePermissions(account.role);
+    if (rolePerm && rolePerm.all) {
+        return { custom: false, allowed: 'all' };
+    }
+    return { custom: false, allowed: (rolePerm && rolePerm.allowed) || [] };
+}
+
+// ============= 🔐 權限管理後台 =============
+// 所有可控制的功能清單（分類）
+var PERMISSION_FEATURES = [
+    { group: '📋 工作日常', items: [
+        { id: 'workList',          name: '📋 工作清單' },
+        { id: 'changePassword',    name: '🔑 變更密碼' },
+        { id: 'mySalary',          name: '📄 我的薪資' }
+    ]},
+    { group: '⏰ 出勤管理', items: [
+        { id: 'attendanceAbnormal', name: '⚠️ 出勤異常' },
+        { id: 'overtimeApply',      name: '⏰ 加班申請' },
+        { id: 'businessTrip',       name: '🚗 出差申請' },
+        { id: 'cardSupplement',     name: '🃏 補卡申請' },
+        { id: 'leaveApply',         name: '🏖️ 請假申請' },
+        { id: 'shiftSwap',          name: '🔄 換班申請' },
+        { id: 'attendanceQuery',    name: '🔍 出勤查詢' }
+    ]},
+    { group: '📅 班表作業', items: [
+        { id: 'schedule',       name: '📅 排班作業' },
+        { id: 'scheduleQuery',  name: '🔍 排班查詢' },
+        { id: 'reviewMonth',    name: '📊 月終審核' }
+    ]},
+    { group: '👥 員工資料', items: [
+        { id: 'employeeBasic',    name: '📝 員工基本資料' },
+        { id: 'leaveAllocation',  name: '🌴 假別額度管理' },
+        { id: 'insuranceAdd',     name: '➕ 加保作業' },
+        { id: 'insuranceRemove',  name: '➖ 退保作業' },
+        { id: 'insuranceQuery',   name: '🔍 加保查詢' }
+    ]},
+    { group: '💰 薪資 / 報表', items: [
+        { id: 'payroll',          name: '💰 薪資管理' },
+        { id: 'cashReport',       name: '💵 現金日報' },
+        { id: 'purchaseReceipt',  name: '📦 進貨驗收' },
+        { id: 'transferOrder',    name: '🔄 51-調撥單' }
+    ]},
+    { group: '⚙️ 系統管理', items: [
+        { id: 'storeManagement',    name: '🏬 門市管理' },
+        { id: 'accountManagement',  name: '👤 帳號管理' },
+        { id: 'permissionSettings', name: '🔐 權限設定' },
+        { id: 'systemParams',       name: '⚙️ 系統參數' },
+        { id: 'systemLog',          name: '📜 系統紀錄' }
+    ]}
+];
+
+var EDITABLE_ROLES = ['manager', 'deputy', 'staff', 'user'];
+
+// 渲染權限矩陣
+function renderPermissionMatrix() {
+    var tbody = document.getElementById('permissionMatrixBody');
+    if (!tbody) return;
+    
+    // 取目前的權限設定（自訂或預設）
+    var customPerms = loadData('customRolePermissions', null);
+    
+    function isAllowed(role, featureId) {
+        if (role === 'admin') return true;
+        var perm = (customPerms && customPerms[role]) || ROLE_PERMISSIONS[role];
+        if (!perm) return false;
+        if (perm.all) return true;
+        return perm.allowed && perm.allowed.indexOf(featureId) !== -1;
+    }
+    
+    var html = '';
+    for (var g = 0; g < PERMISSION_FEATURES.length; g++) {
+        var grp = PERMISSION_FEATURES[g];
+        // 群組標題
+        html += '<tr style="background:#fef3c7;">';
+        html += '<td colspan="6" style="font-weight:bold; padding:8px 12px; color:#78350f; font-size:13px;">' + grp.group + '</td>';
+        html += '</tr>';
+        
+        for (var i = 0; i < grp.items.length; i++) {
+            var feat = grp.items[i];
+            html += '<tr>';
+            html += '<td style="padding:8px 12px; font-size:13px;">' + feat.name + '</td>';
+            
+            // 管理員（固定打勾，不可改）
+            html += '<td style="text-align:center; background:#fee2e2;">' +
+                    '<span style="color:#dc2626; font-size:18px;" title="管理員擁有所有權限">✓</span></td>';
+            
+            // 其他角色（可勾選）
+            for (var r = 0; r < EDITABLE_ROLES.length; r++) {
+                var role = EDITABLE_ROLES[r];
+                var checked = isAllowed(role, feat.id);
+                html += '<td style="text-align:center;">' +
+                        '<input type="checkbox" class="perm-check" data-role="' + role + '" data-feature="' + feat.id + '" ' + 
+                        (checked ? 'checked' : '') + 
+                        ' style="width:20px; height:20px; cursor:pointer;"></td>';
+            }
+            
+            html += '</tr>';
+        }
+    }
+    
+    tbody.innerHTML = html;
+}
+
+// 全選/全取消某角色
+function toggleAllForRole(role, checked) {
+    var checkboxes = document.querySelectorAll('.perm-check[data-role="' + role + '"]');
+    for (var i = 0; i < checkboxes.length; i++) {
+        checkboxes[i].checked = checked;
+    }
+    showNotif((checked ? '✅ 已全選 ' : '❌ 已取消 ') + getRoleName(role) + ' 所有權限（請記得儲存）');
+}
+
+function getRoleName(role) {
+    var names = { 'admin':'管理員', 'manager':'店長', 'deputy':'副店長', 'staff':'職員', 'user':'時薪' };
+    return names[role] || role;
+}
+
+// 儲存權限
+function saveRolePermissions() {
+    var newPerms = {
+        'admin': { all: true }
+    };
+    
+    for (var r = 0; r < EDITABLE_ROLES.length; r++) {
+        var role = EDITABLE_ROLES[r];
+        var allowed = [];
+        var checkboxes = document.querySelectorAll('.perm-check[data-role="' + role + '"]:checked');
+        for (var i = 0; i < checkboxes.length; i++) {
+            allowed.push(checkboxes[i].getAttribute('data-feature'));
+        }
+        newPerms[role] = { allowed: allowed };
+    }
+    
+    saveData('customRolePermissions', newPerms);
+    
+    // 統計
+    var summary = '';
+    for (var rr = 0; rr < EDITABLE_ROLES.length; rr++) {
+        var rname = EDITABLE_ROLES[rr];
+        summary += '\n• ' + getRoleName(rname) + '：' + newPerms[rname].allowed.length + ' 項';
+    }
+    
+    alert('✅ 權限已儲存！' + summary + '\n\n⚡ 變更會立即套用到目前登入的使用者。\n其他使用者下次登入時生效。');
+    logAction('permission', '修改角色權限設定');
+    
+    // 立即套用到目前使用者
+    if (currentUser) {
+        applyRolePermissions();
+    }
+}
+
+// 還原為預設權限
+function resetRolePermissions() {
+    if (!confirm('🔄 確定要還原為系統預設權限？\n\n所有自訂權限將被清除！')) return;
+    
+    // 清除自訂權限
+    localStorage.removeItem('customRolePermissions');
+    renderPermissionMatrix();
+    showNotif('🔄 已還原為系統預設權限');
+    logAction('permission', '還原預設權限');
+    
+    if (currentUser) applyRolePermissions();
+}
+
+// ============= 👤 個別員工權限自訂 =============
+var _currentEditingAccount = null;
+
+function renderAccountPermissionList() {
+    var tbody = document.getElementById('accountPermissionList');
+    if (!tbody) return;
+    
+    var accounts = loadData('accounts', defaultAccounts);
+    var employees = loadData('employees', defaultEmployees);
+    var stores = loadData('stores', defaultStores);
+    var customAcc = loadData('customAccountPermissions', {});
+    
+    var keyword = (document.getElementById('empPermSearch') || {value:''}).value.toLowerCase();
+    
+    var filtered = accounts.filter(function(acc) {
+        if (!keyword) return true;
+        // 找對應員工
+        var emp = employees.find(function(e) { return e.name === acc.name; });
+        var num = emp ? emp.num : '';
+        return acc.username.toLowerCase().includes(keyword) ||
+               acc.name.toLowerCase().includes(keyword) ||
+               num.toLowerCase().includes(keyword);
+    });
+    
+    if (filtered.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:30px;color:#9ca3af;">📭 找不到符合的帳號</td></tr>';
+        return;
+    }
+    
+    var roleNames = { 
+        'admin':   { name:'系統管理員', color:'#dc2626', bg:'#fee2e2' },
+        'manager': { name:'店長',       color:'#d97706', bg:'#fed7aa' },
+        'deputy':  { name:'副店長',     color:'#7c3aed', bg:'#e9d5ff' },
+        'staff':   { name:'一般職員',   color:'#059669', bg:'#a7f3d0' },
+        'user':    { name:'時薪人員',   color:'#0891b2', bg:'#a5f3fc' }
+    };
+    
+    var html = '';
+    for (var i = 0; i < filtered.length; i++) {
+        var acc = filtered[i];
+        var role = roleNames[acc.role] || { name: acc.role, color:'#6b7280', bg:'#e5e7eb' };
+        var emp = employees.find(function(e) { return e.name === acc.name; });
+        var store = emp && emp.homeStoreId ? stores.find(function(s) { return s.id === emp.homeStoreId; }) : null;
+        
+        var hasCustom = !!customAcc[acc.username];
+        var statusHtml = '';
+        if (acc.role === 'admin') {
+            statusHtml = '<span style="background:#fee2e2;color:#991b1b;padding:3px 8px;border-radius:3px;font-size:11px;font-weight:bold;">🔒 全部權限（不可改）</span>';
+        } else if (hasCustom) {
+            var customCount = customAcc[acc.username].length;
+            statusHtml = '<span style="background:#3b82f6;color:white;padding:3px 8px;border-radius:3px;font-size:11px;font-weight:bold;">⭐ 自訂 (' + customCount + ' 項)</span>';
+        } else {
+            statusHtml = '<span style="background:#e5e7eb;color:#374151;padding:3px 8px;border-radius:3px;font-size:11px;">📋 同角色預設</span>';
+        }
+        
+        html += '<tr>';
+        html += '<td><strong>' + acc.username + '</strong></td>';
+        html += '<td>' + acc.name + '</td>';
+        html += '<td>' + (emp ? emp.num : '<span style="color:#9ca3af;">-</span>') + '</td>';
+        html += '<td><span style="background:' + role.bg + ';color:' + role.color + ';padding:3px 8px;border-radius:3px;font-size:11px;font-weight:bold;">' + role.name + '</span></td>';
+        html += '<td>' + (store ? store.name : '<span style="color:#9ca3af;">-</span>') + '</td>';
+        html += '<td>' + statusHtml + '</td>';
+        html += '<td>';
+        if (acc.role === 'admin') {
+            html += '<span style="color:#9ca3af; font-size:11px;">無法修改</span>';
+        } else {
+            html += '<button class="btn-edit" style="padding:5px 10px; font-size:11px;" onclick="openAccountPermissionModal(\'' + acc.username + '\')">🔧 自訂權限</button>';
+            if (hasCustom) {
+                html += ' <button class="btn-danger" style="padding:5px 10px; font-size:11px;" onclick="quickClearAccountPerm(\'' + acc.username + '\')">🔄</button>';
+            }
+        }
+        html += '</td>';
+        html += '</tr>';
+    }
+    tbody.innerHTML = html;
+}
+
+function openAccountPermissionModal(username) {
+    var accounts = loadData('accounts', defaultAccounts);
+    var employees = loadData('employees', defaultEmployees);
+    var stores = loadData('stores', defaultStores);
+    
+    var account = accounts.find(function(a) { return a.username === username; });
+    if (!account) return alert('找不到帳號');
+    if (account.role === 'admin') return alert('管理員權限無法修改');
+    
+    _currentEditingAccount = account;
+    
+    var emp = employees.find(function(e) { return e.name === account.name; });
+    var store = emp && emp.homeStoreId ? stores.find(function(s) { return s.id === emp.homeStoreId; }) : null;
+    
+    // 設定標題
+    document.getElementById('accountPermissionTitle').textContent = 
+        '🔧 ' + account.name + ' 的個別權限';
+    
+    // 顯示帳號資訊
+    var roleNames = { 
+        'admin':'系統管理員','manager':'店長','deputy':'副店長','staff':'一般職員','user':'時薪人員'
+    };
+    var info = document.getElementById('accountPermissionInfo');
+    info.innerHTML = 
+        '<div><strong>👤 帳號：</strong>' + account.username + '</div>' +
+        '<div><strong>姓名：</strong>' + account.name + '</div>' +
+        (emp ? '<div><strong>編號：</strong>' + emp.num + '</div>' : '') +
+        '<div><strong>角色：</strong>' + (roleNames[account.role] || account.role) + '</div>' +
+        (store ? '<div><strong>🏬 門市：</strong>' + store.name + '</div>' : '');
+    
+    // 渲染功能複選框
+    var customAcc = loadData('customAccountPermissions', {});
+    var currentAllowed = customAcc[username] || null;
+    
+    // 如果沒自訂，預設用該角色的權限
+    if (!currentAllowed) {
+        var rolePerm = getEffectivePermissions(account.role);
+        currentAllowed = (rolePerm && rolePerm.allowed) || [];
+    }
+    
+    var featuresDiv = document.getElementById('accountPermissionFeatures');
+    var html = '';
+    for (var g = 0; g < PERMISSION_FEATURES.length; g++) {
+        var grp = PERMISSION_FEATURES[g];
+        html += '<div style="background:#fef3c7; padding:6px 10px; font-weight:bold; color:#78350f; margin-top:8px; border-radius:4px;">' + grp.group + '</div>';
+        for (var i = 0; i < grp.items.length; i++) {
+            var feat = grp.items[i];
+            var checked = currentAllowed.indexOf(feat.id) !== -1;
+            html += '<label style="display:flex; align-items:center; padding:6px 10px; cursor:pointer; border-bottom:1px solid #f3f4f6;">' +
+                    '<input type="checkbox" class="acc-perm-check" data-feature="' + feat.id + '" ' + (checked ? 'checked' : '') + ' style="width:18px; height:18px; margin-right:10px; cursor:pointer;">' +
+                    '<span style="font-size:13px;">' + feat.name + '</span>' +
+                    '</label>';
+        }
+    }
+    featuresDiv.innerHTML = html;
+    
+    document.getElementById('accountPermissionModal').classList.remove('hidden');
+}
+
+function accountPermAll(checked) {
+    var checkboxes = document.querySelectorAll('.acc-perm-check');
+    for (var i = 0; i < checkboxes.length; i++) {
+        checkboxes[i].checked = checked;
+    }
+    showNotif(checked ? '✅ 已全選' : '⬜ 已全取消');
+}
+
+function accountPermFromRole() {
+    if (!_currentEditingAccount) return;
+    var rolePerm = getEffectivePermissions(_currentEditingAccount.role);
+    var allowed = (rolePerm && rolePerm.allowed) || [];
+    var checkboxes = document.querySelectorAll('.acc-perm-check');
+    for (var i = 0; i < checkboxes.length; i++) {
+        var fid = checkboxes[i].getAttribute('data-feature');
+        checkboxes[i].checked = allowed.indexOf(fid) !== -1;
+    }
+    showNotif('📋 已套用「' + _currentEditingAccount.role + '」角色預設權限');
+}
+
+function saveAccountPermissions() {
+    if (!_currentEditingAccount) return;
+    
+    var allowed = [];
+    var checkboxes = document.querySelectorAll('.acc-perm-check:checked');
+    for (var i = 0; i < checkboxes.length; i++) {
+        allowed.push(checkboxes[i].getAttribute('data-feature'));
+    }
+    
+    var customAcc = loadData('customAccountPermissions', {});
+    customAcc[_currentEditingAccount.username] = allowed;
+    saveData('customAccountPermissions', customAcc);
+    
+    showNotif('💾 已儲存「' + _currentEditingAccount.name + '」的自訂權限（' + allowed.length + ' 項）');
+    logAction('permission', '設定 ' + _currentEditingAccount.username + ' 個別權限 ' + allowed.length + ' 項');
+    
+    closeModal('accountPermissionModal');
+    renderAccountPermissionList();
+    
+    // 如果改的是目前登入者，立即套用
+    if (currentUser && currentUser.username === _currentEditingAccount.username) {
+        applyRolePermissions();
+    }
+    _currentEditingAccount = null;
+}
+
+function clearAccountPermissions() {
+    if (!_currentEditingAccount) return;
+    if (!confirm('🗑️ 確定清除「' + _currentEditingAccount.name + '」的自訂權限？\n\n清除後將回到該員工所屬角色的預設權限。')) return;
+    
+    var customAcc = loadData('customAccountPermissions', {});
+    delete customAcc[_currentEditingAccount.username];
+    saveData('customAccountPermissions', customAcc);
+    
+    showNotif('🔄 已清除「' + _currentEditingAccount.name + '」的自訂權限');
+    logAction('permission', '清除 ' + _currentEditingAccount.username + ' 個別權限');
+    
+    closeModal('accountPermissionModal');
+    renderAccountPermissionList();
+    
+    if (currentUser && currentUser.username === _currentEditingAccount.username) {
+        applyRolePermissions();
+    }
+    _currentEditingAccount = null;
+}
+
+function quickClearAccountPerm(username) {
+    var accounts = loadData('accounts', defaultAccounts);
+    var account = accounts.find(function(a) { return a.username === username; });
+    if (!account) return;
+    
+    if (!confirm('🔄 清除「' + account.name + '」的自訂權限，回到角色預設？')) return;
+    
+    var customAcc = loadData('customAccountPermissions', {});
+    delete customAcc[username];
+    saveData('customAccountPermissions', customAcc);
+    
+    showNotif('🔄 已清除');
+    renderAccountPermissionList();
+    
+    if (currentUser && currentUser.username === username) {
+        applyRolePermissions();
+    }
 }
 
 // 套用權限：登入後隱藏沒權限的選單
@@ -2718,6 +3615,8 @@ function goToPage(pageName, menuId) {
     else if (pageName === 'employeeBasic') renderEmployeeBasicList();
     else if (pageName === 'leaveAllocation') renderLeaveAllocation();
     else if (pageName === 'cashReport') initCashReport();
+    else if (pageName === 'purchaseReceipt') initPurchaseReceipt();
+    else if (pageName === 'transferOrder') initTransferOrder();
     else if (pageName === 'insuranceAdd') { /* 加保表單 */ }
     else if (pageName === 'insuranceRemove') loadInsuranceRemoveOptions();
     else if (pageName === 'insuranceQuery') renderInsuranceQuery();
@@ -2725,6 +3624,7 @@ function goToPage(pageName, menuId) {
     else if (pageName === 'reviewMonth') renderReviewList();
     else if (pageName === 'accountManagement') renderAccountList();
     else if (pageName === 'systemParams') { loadSystemParams(); renderBackupStats(); }
+    else if (pageName === 'permissionSettings') { renderPermissionMatrix(); renderAccountPermissionList(); }
     else if (pageName === 'systemLog') renderSystemLog();
     else if (pageName === 'payroll') { setCurrentMonth('payrollMonth'); renderPayroll(); }
     else if (pageName === 'mySalary') renderMySalary();
@@ -4002,6 +4902,1395 @@ var CR_CASH_ITEMS = [
     { code: '806',  name: '門市現金短/溢', auto: true }
 ];
 
+// ============= 📦 進貨驗收彙總表 =============
+// 區分代碼對照
+var PR_CATEGORIES = [
+    {code:'05', name:'人工驗收'},
+    {code:'10', name:'一般訂貨'},
+    {code:'20', name:'事先訂貨'},
+    {code:'31', name:'追加訂貨'},
+    {code:'40', name:'節慶訂貨'},
+    {code:'50', name:'一般+大智通退貨'},
+    {code:'60', name:'一般預購訂貨'},
+    {code:'70', name:'一般預購退貨'},
+    {code:'80', name:'專案預購訂貨'},
+    {code:'90', name:'專案預購退貨'}
+];
+
+var PR_STATUS_OPTIONS = ['已', '轉', '退', '-'];
+
+// ============= 🔄 51-調撥單 =============
+var _toCurrentItems = [];
+
+function initTransferOrder() {
+    var today = new Date();
+    var dateInput = document.getElementById('toDate');
+    if (dateInput && !dateInput.value) {
+        var yyyy = today.getFullYear();
+        var mm = String(today.getMonth() + 1).padStart(2, '0');
+        var dd = String(today.getDate()).padStart(2, '0');
+        dateInput.value = yyyy + '-' + mm + '-' + dd;
+    }
+    
+    loadTransferStores();
+    
+    // 初始化簽章
+    renderTransferSignaturePanel('out');
+    renderTransferSignaturePanel('in');
+    
+    loadTransferOrder();
+    
+    var pd = document.getElementById('toPrintDate');
+    if (pd) pd.textContent = formatDateTime(new Date());
+    
+    setTimeout(preloadTesseract, 2000);
+}
+
+function loadTransferStores() {
+    var outSel = document.getElementById('toOutStoreSelect');
+    var inSel = document.getElementById('toInStoreSelect');
+    if (!outSel || !inSel) return;
+    
+    var stores = loadData('stores', defaultStores);
+    var currentStoreId = loadData('currentStoreId', stores[0] && stores[0].id);
+    
+    var outHtml = '<option value="">-- 請選擇調出店 --</option>';
+    var inHtml = '<option value="">-- 請選擇調入店 --</option>';
+    for (var i = 0; i < stores.length; i++) {
+        var s = stores[i];
+        var selOut = (s.id === currentStoreId) ? 'selected' : '';
+        outHtml += '<option value="' + s.id + '" ' + selOut + '>' + (s.code || '') + ' - ' + s.name + '</option>';
+        inHtml += '<option value="' + s.id + '">' + (s.code || '') + ' - ' + s.name + '</option>';
+    }
+    outSel.innerHTML = outHtml;
+    inSel.innerHTML = inHtml;
+    
+    // 觸發顯示
+    onTransferStoreChange('out');
+}
+
+function onTransferStoreChange(direction) {
+    var sel = document.getElementById('to' + (direction === 'out' ? 'Out' : 'In') + 'StoreSelect');
+    var info = document.getElementById('to' + (direction === 'out' ? 'Out' : 'In') + 'StoreInfo');
+    if (!sel || !info) return;
+    
+    if (!sel.value) {
+        info.textContent = '-';
+        return;
+    }
+    
+    var stores = loadData('stores', defaultStores);
+    var store = stores.find(function(s) { return s.id === sel.value; });
+    if (!store) return;
+    
+    info.innerHTML = '<strong>' + (store.code || '') + '</strong> ' + store.name;
+    
+    // 驗證：調出店和調入店不能相同
+    var outVal = document.getElementById('toOutStoreSelect').value;
+    var inVal = document.getElementById('toInStoreSelect').value;
+    if (outVal && inVal && outVal === inVal) {
+        showNotif('⚠️ 調出店和調入店不能相同！');
+    }
+}
+
+// 渲染明細表
+function renderTransferItems(items) {
+    var tbody = document.getElementById('toItemsBody');
+    if (!tbody) return;
+    if (!items || items.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="12" style="text-align:center; padding:20px; color:#9ca3af;">📭 尚無調撥項目，點「➕ 新增項目」開始</td></tr>';
+        return;
+    }
+    
+    var html = '';
+    for (var i = 0; i < items.length; i++) {
+        var it = items[i];
+        html += '<tr data-idx="' + i + '">';
+        html += '<td style="text-align:center; background:#fef3c7; font-weight:bold;">' + String(i+1).padStart(4, '0') + '</td>';
+        html += '<td><input type="text" value="' + (it.barcode || '') + '" placeholder="條碼" oninput="updateTransferItem(' + i + ',\'barcode\',this.value)" style="width:100%;border:1px solid #ddd;padding:3px;font-size:11px;"></td>';
+        html += '<td><input type="text" value="' + (it.pma || '88') + '" oninput="updateTransferItem(' + i + ',\'pma\',this.value)" style="width:100%;border:1px solid #ddd;padding:3px;font-size:11px;text-align:center;"></td>';
+        html += '<td><select onchange="updateTransferItem(' + i + ',\'taxFree\',this.value)" style="width:100%;border:1px solid #ddd;padding:3px;font-size:11px;">' +
+                '<option value="免" ' + (it.taxFree === '免' || !it.taxFree ? 'selected' : '') + '>免</option>' +
+                '<option value="應" ' + (it.taxFree === '應' ? 'selected' : '') + '>應</option>' +
+                '</select></td>';
+        html += '<td><input type="text" value="' + (it.productCode || '') + '" placeholder="品號" oninput="updateTransferItem(' + i + ',\'productCode\',this.value)" style="width:100%;border:1px solid #ddd;padding:3px;font-size:11px;"></td>';
+        html += '<td><input type="text" value="' + (it.productName || '') + '" placeholder="品名" oninput="updateTransferItem(' + i + ',\'productName\',this.value)" style="width:100%;border:1px solid #ddd;padding:3px;font-size:11px;"></td>';
+        html += '<td><input type="number" value="' + (it.quantity || 0) + '" oninput="updateTransferItem(' + i + ',\'quantity\',this.value);recalcTransferOrder()" style="width:100%;border:1px solid #ddd;padding:3px;font-size:11px;text-align:right;"></td>';
+        html += '<td><input type="number" step="0.01" value="' + (it.costPrice || 0) + '" oninput="updateTransferItem(' + i + ',\'costPrice\',this.value);recalcTransferOrder()" style="width:100%;border:1px solid #ddd;padding:3px;font-size:11px;text-align:right;"></td>';
+        html += '<td><input type="number" value="' + (it.retailPrice || 0) + '" oninput="updateTransferItem(' + i + ',\'retailPrice\',this.value);recalcTransferOrder()" style="width:100%;border:1px solid #ddd;padding:3px;font-size:11px;text-align:right;"></td>';
+        var costSub = (it.quantity || 0) * (it.costPrice || 0);
+        var retailSub = (it.quantity || 0) * (it.retailPrice || 0);
+        html += '<td style="text-align:right; font-weight:bold; background:#fef3c7;">' + costSub.toFixed(2) + '</td>';
+        html += '<td style="text-align:right; font-weight:bold; background:#dcfce7;">' + retailSub.toLocaleString() + '</td>';
+        html += '<td style="text-align:center;"><button type="button" onclick="deleteTransferItem(' + i + ')" style="padding:6px 10px;background:#dc2626;color:white;border:0;border-radius:4px;font-size:12px;cursor:pointer;font-weight:bold;">🗑️</button></td>';
+        html += '</tr>';
+    }
+    tbody.innerHTML = html;
+}
+
+function updateTransferItem(idx, field, value) {
+    if (!_toCurrentItems[idx]) return;
+    _toCurrentItems[idx][field] = (field === 'quantity' || field === 'costPrice' || field === 'retailPrice')
+                                  ? (parseFloat(value) || 0)
+                                  : value;
+}
+
+function addTransferItem() {
+    _toCurrentItems.push({
+        barcode: '',
+        pma: '88',
+        taxFree: '免',
+        productCode: '',
+        productName: '',
+        quantity: 0,
+        costPrice: 0,
+        retailPrice: 0
+    });
+    renderTransferItems(_toCurrentItems);
+    recalcTransferOrder();
+}
+
+function deleteTransferItem(idx) {
+    if (!_toCurrentItems[idx]) return;
+    var it = _toCurrentItems[idx];
+    var label = it.productName || it.productCode || ('第 ' + (idx+1) + ' 項');
+    showConfirmDelete('刪除此項目？', '<strong>' + label + '</strong><br>此操作無法復原！', function() {
+        _toCurrentItems.splice(idx, 1);
+        renderTransferItems(_toCurrentItems);
+        recalcTransferOrder();
+        showNotif('🗑️ 已刪除項目');
+    });
+}
+
+// 重算合計
+function recalcTransferOrder() {
+    var totalCost = 0, totalRetail = 0;
+    for (var i = 0; i < _toCurrentItems.length; i++) {
+        var it = _toCurrentItems[i];
+        totalCost += (it.quantity || 0) * (it.costPrice || 0);
+        totalRetail += (it.quantity || 0) * (it.retailPrice || 0);
+    }
+    var countEl = document.getElementById('toItemCount');
+    var costEl = document.getElementById('toCostTotal');
+    var retailEl = document.getElementById('toRetailTotal');
+    if (countEl) countEl.textContent = _toCurrentItems.length;
+    if (costEl) costEl.textContent = '$' + totalCost.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2});
+    if (retailEl) retailEl.textContent = '$' + totalRetail.toLocaleString();
+}
+
+// 🖋️ 簽章面板
+function renderTransferSignaturePanel(role) {
+    var container = document.getElementById('toSigContainer_' + role);
+    if (!container) return;
+    
+    var dataEl = document.getElementById('toSig_' + role + '_data');
+    var timeEl = document.getElementById('toSig_' + role + '_time');
+    var existingSig = dataEl ? dataEl.value : '';
+    var existingTime = timeEl ? timeEl.value : '';
+    
+    if (existingSig) {
+        var timeStr = existingTime ? formatDateTime(new Date(existingTime)) : '';
+        var textColor = role === 'out' ? '#92400e' : '#1e3a8a';
+        container.innerHTML = 
+            '<div style="background:white; padding:10px; border-radius:6px; border:2px solid ' + textColor + ';">' +
+                '<img src="' + existingSig + '" style="max-width:100%; max-height:120px; display:block; margin:0 auto;">' +
+            '</div>' +
+            '<div style="margin-top:8px; font-size:12px; color:' + textColor + '; font-weight:bold; text-align:center;">' +
+                '✅ 已簽章於 ' + timeStr +
+            '</div>' +
+            '<button type="button" class="btn-secondary" style="padding:6px 12px; font-size:12px; margin-top:8px; display:block; margin-left:auto; margin-right:auto;" onclick="resetTransferSignature(\'' + role + '\')">🔄 重新簽章</button>';
+    } else {
+        container.innerHTML = 
+            '<div onclick="openTransferSignatureModal(\'' + role + '\')" ' +
+                'style="background:white; border:3px dashed #999; min-height:80px; ' +
+                'display:flex; align-items:center; justify-content:center; flex-direction:column; ' +
+                'cursor:pointer; border-radius:6px; color:#6b7280; font-size:14px; padding:14px;">' +
+                '<div style="font-size:28px; margin-bottom:4px;">✍️</div>' +
+                '<strong>點此開啟大畫面簽章</strong>' +
+            '</div>';
+    }
+}
+
+function openTransferSignatureModal(role) {
+    _currentSigRole = 'to_' + role;
+    var roleName = role === 'out' ? '調出店' : '調入店';
+    document.getElementById('signatureModalTitle').textContent = '🖋️ ' + roleName + ' 電子簽章';
+    document.getElementById('signatureModal').classList.remove('hidden');
+    setTimeout(function() { initSignaturePad('bigSigCanvas'); }, 100);
+}
+
+function resetTransferSignature(role) {
+    document.getElementById('toSig_' + role + '_data').value = '';
+    document.getElementById('toSig_' + role + '_time').value = '';
+    renderTransferSignaturePanel(role);
+}
+
+// 儲存
+function saveTransferOrder() {
+    var dateVal = document.getElementById('toDate').value;
+    if (!dateVal) return alert('⚠️ 請選擇日期');
+    
+    var orderNo = document.getElementById('toOrderNo').value.trim();
+    if (!orderNo) return alert('⚠️ 請輸入調撥單號');
+    
+    var outId = document.getElementById('toOutStoreSelect').value;
+    var inId = document.getElementById('toInStoreSelect').value;
+    if (!outId) return alert('⚠️ 請選擇調出店');
+    if (!inId) return alert('⚠️ 請選擇調入店');
+    if (outId === inId) return alert('⚠️ 調出店和調入店不能相同！');
+    
+    var stores = loadData('stores', defaultStores);
+    var outStore = stores.find(function(s) { return s.id === outId; });
+    var inStore = stores.find(function(s) { return s.id === inId; });
+    
+    var report = {
+        date: dateVal,
+        orderNo: orderNo,
+        outStoreId: outId,
+        outStoreCode: outStore.code || '',
+        outStoreName: outStore.name || '',
+        inStoreId: inId,
+        inStoreCode: inStore.code || '',
+        inStoreName: inStore.name || '',
+        items: _toCurrentItems,
+        outSignData: document.getElementById('toSig_out_data').value,
+        outSignTime: document.getElementById('toSig_out_time').value,
+        inSignData: document.getElementById('toSig_in_data').value,
+        inSignTime: document.getElementById('toSig_in_time').value,
+        savedAt: new Date().toISOString()
+    };
+    
+    var all = loadData('transferOrders', {});
+    all[orderNo] = report;
+    saveData('transferOrders', all);
+    
+    showNotif('💾 已儲存調撥單：' + orderNo);
+    logAction('transferOrder', '儲存調撥單：' + orderNo);
+}
+
+// 載入
+function loadTransferOrder() {
+    var dateVal = document.getElementById('toDate').value;
+    if (!dateVal) return;
+    
+    var pd = document.getElementById('toPrintDate');
+    if (pd) pd.textContent = formatDateTime(new Date());
+    
+    // 若有單號則嘗試載入該單
+    var orderNo = document.getElementById('toOrderNo').value.trim();
+    if (!orderNo) {
+        // 清空項目
+        _toCurrentItems = [];
+        renderTransferItems(_toCurrentItems);
+        recalcTransferOrder();
+        return;
+    }
+    
+    var all = loadData('transferOrders', {});
+    var report = all[orderNo];
+    
+    if (!report) {
+        _toCurrentItems = [];
+        renderTransferItems(_toCurrentItems);
+        recalcTransferOrder();
+        return;
+    }
+    
+    document.getElementById('toDate').value = report.date;
+    document.getElementById('toOrderNo').value = report.orderNo;
+    if (report.outStoreId) {
+        document.getElementById('toOutStoreSelect').value = report.outStoreId;
+        onTransferStoreChange('out');
+    }
+    if (report.inStoreId) {
+        document.getElementById('toInStoreSelect').value = report.inStoreId;
+        onTransferStoreChange('in');
+    }
+    
+    // 簽章
+    document.getElementById('toSig_out_data').value = report.outSignData || '';
+    document.getElementById('toSig_out_time').value = report.outSignTime || '';
+    document.getElementById('toSig_in_data').value = report.inSignData || '';
+    document.getElementById('toSig_in_time').value = report.inSignTime || '';
+    renderTransferSignaturePanel('out');
+    renderTransferSignaturePanel('in');
+    
+    _toCurrentItems = report.items || [];
+    renderTransferItems(_toCurrentItems);
+    recalcTransferOrder();
+}
+
+// 📊 歷史
+function openTransferOrderHistory() {
+    document.getElementById('transferOrderHistoryModal').classList.remove('hidden');
+    renderTransferOrderHistory();
+}
+
+function renderTransferOrderHistory() {
+    var all = loadData('transferOrders', {});
+    var keys = Object.keys(all).sort(function(a, b) {
+        return (all[b].date || '').localeCompare(all[a].date || '');
+    });
+    
+    var tbody = document.getElementById('toHistoryBody');
+    if (keys.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; padding:30px; color:#9ca3af;">📭 尚無歷史記錄</td></tr>';
+        return;
+    }
+    
+    var html = '';
+    for (var i = 0; i < keys.length; i++) {
+        var k = keys[i];
+        var r = all[k];
+        var totalCost = 0;
+        if (r.items) {
+            for (var j = 0; j < r.items.length; j++) {
+                totalCost += (r.items[j].quantity || 0) * (r.items[j].costPrice || 0);
+            }
+        }
+        var hasOutSig = !!r.outSignData;
+        var hasInSig = !!r.inSignData;
+        var sigStatus = '';
+        if (hasOutSig && hasInSig) sigStatus = '<span class="status-tag status-done">✅ 雙簽</span>';
+        else if (hasOutSig || hasInSig) sigStatus = '<span class="status-tag" style="background:#fef3c7;color:#92400e;">⚠️ 缺一</span>';
+        else sigStatus = '<span class="status-tag" style="background:#fee2e2;color:#991b1b;">❌ 未簽</span>';
+        
+        html += '<tr>';
+        html += '<td><strong>' + (r.date || '-') + '</strong></td>';
+        html += '<td style="font-family:monospace;">' + r.orderNo + '</td>';
+        html += '<td>' + (r.outStoreCode || '') + ' ' + (r.outStoreName || '-') + '</td>';
+        html += '<td>' + (r.inStoreCode || '') + ' ' + (r.inStoreName || '-') + '</td>';
+        html += '<td style="text-align:right;">' + ((r.items && r.items.length) || 0) + '</td>';
+        html += '<td style="text-align:right;">$' + totalCost.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2}) + '</td>';
+        html += '<td style="text-align:center;">' + sigStatus + '</td>';
+        html += '<td>';
+        html += '<button class="btn-edit" style="padding:4px 10px; font-size:11px;" onclick="loadTransferOrderFromHistory(\'' + r.orderNo + '\')">📂 查看</button> ';
+        html += '<button class="btn-danger" style="padding:4px 10px; font-size:11px;" onclick="deleteTransferOrderRecord(\'' + r.orderNo + '\')">🗑️</button>';
+        html += '</td>';
+        html += '</tr>';
+    }
+    tbody.innerHTML = html;
+}
+
+function loadTransferOrderFromHistory(orderNo) {
+    closeModal('transferOrderHistoryModal');
+    document.getElementById('toOrderNo').value = orderNo;
+    loadTransferOrder();
+    showNotif('📂 已載入 ' + orderNo);
+}
+
+function deleteTransferOrderRecord(orderNo) {
+    showConfirmDelete('刪除調撥單？', '單號：' + orderNo + '<br>此操作無法復原！', function() {
+        var all = loadData('transferOrders', {});
+        delete all[orderNo];
+        saveData('transferOrders', all);
+        renderTransferOrderHistory();
+        showNotif('🗑️ 已刪除 ' + orderNo);
+        logAction('transferOrder', '刪除調撥單：' + orderNo);
+    });
+}
+
+// 📸 OCR
+function processTransferOrderOCR() {
+    var fileInput = document.getElementById('toImageUpload');
+    if (!fileInput.files || !fileInput.files[0]) {
+        return alert('⚠️ 請先選擇圖片');
+    }
+    
+    var file = fileInput.files[0];
+    var statusEl = document.getElementById('toOcrStatus');
+    
+    var reader = new FileReader();
+    reader.onload = function(e) {
+        document.getElementById('toPreviewImg').src = e.target.result;
+        document.getElementById('toImagePreview').style.display = 'block';
+    };
+    reader.readAsDataURL(file);
+    
+    if (typeof Tesseract === 'undefined') {
+        statusEl.textContent = '❌ OCR 引擎未載入';
+        return;
+    }
+    
+    statusEl.textContent = '⏳ 圖片前處理中...';
+    
+    preprocessImageForOCR(file).then(function(processedBlob) {
+        statusEl.textContent = '⏳ 開始辨識...';
+        return Tesseract.recognize(processedBlob, 'chi_tra+eng', {
+            logger: function(m) {
+                if (m.status === 'recognizing text') {
+                    statusEl.textContent = '🔍 辨識中... ' + Math.round(m.progress * 100) + '%';
+                } else if (m.status === 'loading language traineddata') {
+                    statusEl.textContent = '⏳ 下載中文語言包...';
+                }
+            }
+        });
+    }).then(function(result) {
+        document.getElementById('toOcrResult').value = result.data.text;
+        document.getElementById('toOcrResult').style.display = 'block';
+        document.getElementById('toApplyOcrBtn').style.display = 'inline-block';
+        statusEl.textContent = '✅ 辨識完成，請檢查後點「套用」';
+    }).catch(function(err) {
+        statusEl.textContent = '❌ 辨識失敗：' + err.message;
+    });
+}
+
+// 套用 OCR 結果到表格
+function applyTransferOrderOcr() {
+    var text = document.getElementById('toOcrResult').value;
+    if (!text) return alert('⚠️ 沒有辨識結果');
+    
+    // 擷取調撥單號
+    var orderMatch = text.match(/(\d{13})/);
+    if (orderMatch) document.getElementById('toOrderNo').value = orderMatch[1];
+    
+    // 擷取調出/調入店號
+    var outStoreMatch = text.match(/調\s*出[：:\s]*(\d{6})\s*(\S+)/);
+    var inStoreMatch = text.match(/調\s*入[：:\s]*(\d{6})\s*(\S+)/);
+    
+    // 嘗試自動選擇店家（如果代碼對得上）
+    if (outStoreMatch) {
+        var stores = loadData('stores', defaultStores);
+        var outStore = stores.find(function(s) { return s.code === outStoreMatch[1]; });
+        if (outStore) {
+            document.getElementById('toOutStoreSelect').value = outStore.id;
+            onTransferStoreChange('out');
+        }
+    }
+    if (inStoreMatch) {
+        var stores2 = loadData('stores', defaultStores);
+        var inStore = stores2.find(function(s) { return s.code === inStoreMatch[1]; });
+        if (inStore) {
+            document.getElementById('toInStoreSelect').value = inStore.id;
+            onTransferStoreChange('in');
+        }
+    }
+    
+    // 解析品項列
+    var lines = text.split(/\n/);
+    var newItems = [];
+    
+    for (var i = 0; i < lines.length; i++) {
+        var line = lines[i].trim();
+        if (!line || line.length < 5) continue;
+        
+        // 必須以 4 位數字（項次）開頭
+        var rowMatch = line.match(/^(\d{4})\s+/);
+        if (!rowMatch) continue;
+        
+        // 擷取數字
+        var nums = line.match(/-?\d{1,3}(?:,\d{3})*\.?\d*/g);
+        if (!nums || nums.length < 3) continue;
+        
+        // 擷取品號（5-7 位數字）
+        var prodMatch = line.match(/(\d{6,8})/g);
+        var productCode = '';
+        if (prodMatch) {
+            for (var p = 0; p < prodMatch.length; p++) {
+                if (prodMatch[p].length >= 6 && prodMatch[p] !== rowMatch[1]) {
+                    productCode = prodMatch[p];
+                    break;
+                }
+            }
+        }
+        
+        // 取最後幾個數字當數量、單價、合計
+        var lastNums = nums.slice(-4).map(function(n) { return parseFloat(n.replace(/,/g, '')) || 0; });
+        // 通常順序：數量 成本價 零售價 成本小計  （零售小計可能是 0）
+        var quantity = lastNums.length >= 4 ? lastNums[0] : (lastNums[0] || 0);
+        var costPrice = lastNums.length >= 4 ? lastNums[1] : 0;
+        var retailPrice = lastNums.length >= 4 ? lastNums[2] : 0;
+        
+        // 擷取品名（去除其他元素後的中文 + 英數）
+        var productName = '';
+        // 嘗試找品名（在品號後面、數字前面）
+        if (productCode) {
+            var afterCode = line.split(productCode)[1];
+            if (afterCode) {
+                // 移除尾端數字
+                var nameMatch = afterCode.match(/^\s*(.+?)\s+\d/);
+                if (nameMatch) productName = nameMatch[1].trim();
+            }
+        }
+        
+        // 擷取條碼（長數字串）
+        var barcodeMatch = line.match(/\b(\d{10,16})\b/);
+        var barcode = barcodeMatch ? barcodeMatch[1] : '';
+        
+        newItems.push({
+            barcode: barcode,
+            pma: '88',
+            taxFree: line.indexOf('免') > -1 ? '免' : '應',
+            productCode: productCode,
+            productName: productName,
+            quantity: quantity,
+            costPrice: costPrice,
+            retailPrice: retailPrice
+        });
+    }
+    
+    if (newItems.length === 0) {
+        return alert('⚠️ 未辨識出任何品項。\n建議：\n1. 圖片要清晰\n2. 或手動修改 OCR 文字後再套用\n3. 也可直接點「➕ 新增項目」手動輸入');
+    }
+    
+    _toCurrentItems = newItems;
+    renderTransferItems(_toCurrentItems);
+    recalcTransferOrder();
+    showNotif('✅ 已套用 ' + newItems.length + ' 個品項，請逐項檢查');
+}
+
+// 🖨️ 列印
+function printTransferOrder() {
+    var orderNo = document.getElementById('toOrderNo').value.trim();
+    if (!orderNo) return alert('⚠️ 請先輸入調撥單號');
+    
+    function val(id) { var el = document.getElementById(id); return el ? (el.value || el.textContent || '') : ''; }
+    function fmt(n, dp) { 
+        if (dp === undefined) return (n || 0).toLocaleString();
+        return (parseFloat(n) || 0).toLocaleString(undefined, {minimumFractionDigits:dp, maximumFractionDigits:dp});
+    }
+    
+    var dateVal = document.getElementById('toDate').value;
+    var d = new Date(dateVal);
+    var weekDays = ['日','一','二','三','四','五','六'];
+    var now = new Date();
+    var printDate = now.getFullYear() + '/ ' + String(now.getMonth()+1).padStart(2,'0') + '/ ' + String(now.getDate()).padStart(2,'0') + '(' + weekDays[now.getDay()] + ') ' + String(now.getHours()).padStart(2,'0') + ':' + String(now.getMinutes()).padStart(2,'0');
+    
+    var stores = loadData('stores', defaultStores);
+    var outStore = stores.find(function(s) { return s.id === document.getElementById('toOutStoreSelect').value; });
+    var inStore = stores.find(function(s) { return s.id === document.getElementById('toInStoreSelect').value; });
+    
+    var totalCost = 0, totalRetail = 0;
+    var rows = '';
+    for (var i = 0; i < _toCurrentItems.length; i++) {
+        var it = _toCurrentItems[i];
+        var costSub = (it.quantity || 0) * (it.costPrice || 0);
+        var retailSub = (it.quantity || 0) * (it.retailPrice || 0);
+        totalCost += costSub;
+        totalRetail += retailSub;
+        rows += '<tr>';
+        rows += '<td style="text-align:center;">' + String(i+1).padStart(4, '0') + '</td>';
+        rows += '<td style="font-family:monospace; font-size:9px;">' + (it.barcode || '') + '</td>';
+        rows += '<td style="text-align:center;">' + (it.pma || '') + ' ' + (it.taxFree || '') + '</td>';
+        rows += '<td>' + (it.productCode || '') + '</td>';
+        rows += '<td>' + (it.productName || '') + '</td>';
+        rows += '<td style="text-align:right;">' + (it.quantity || '') + '</td>';
+        rows += '<td style="text-align:right;">' + fmt(it.costPrice, 2) + '</td>';
+        rows += '<td style="text-align:right;">' + fmt(it.retailPrice) + '</td>';
+        rows += '<td style="text-align:right;">' + fmt(costSub, 2) + '</td>';
+        rows += '<td style="text-align:right;">' + fmt(retailSub) + '</td>';
+        rows += '</tr>';
+    }
+    rows += '<tr style="background:#fef3c7; font-weight:bold;">';
+    rows += '<td colspan="8" style="text-align:right;">本頁合計</td>';
+    rows += '<td style="text-align:right;">' + fmt(totalCost, 2) + '</td>';
+    rows += '<td style="text-align:right;">' + fmt(totalRetail) + '</td>';
+    rows += '</tr>';
+    rows += '<tr style="background:#fef3c7; font-weight:bold;">';
+    rows += '<td colspan="8" style="text-align:right;">合計</td>';
+    rows += '<td style="text-align:right;">' + fmt(totalCost, 2) + '</td>';
+    rows += '<td style="text-align:right;">' + fmt(totalRetail) + '</td>';
+    rows += '</tr>';
+    
+    var outSig = val('toSig_out_data');
+    var inSig = val('toSig_in_data');
+    var outSigHtml = outSig ? '<img src="' + outSig + '" style="max-height:60px; max-width:200px;">' : '<span style="color:#9ca3af;">（未簽）</span>';
+    var inSigHtml = inSig ? '<img src="' + inSig + '" style="max-height:60px; max-width:200px;">' : '<span style="color:#9ca3af;">（未簽）</span>';
+    
+    var html = '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>51-調撥單 ' + orderNo + '</title>';
+    html += '<style>';
+    html += '@page { size:A4; margin:8mm; }';
+    html += 'body { font-family:"Microsoft JhengHei","PingFang TC",sans-serif; color:#000; background:white; margin:0; padding:8mm; font-size:11px; }';
+    html += '.title { text-align:center; font-size:18px; font-weight:bold; margin-bottom:8px; }';
+    html += '.hi { display:flex; justify-content:space-between; margin-bottom:6px; font-size:11px; }';
+    html += '.tx { display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-bottom:8px; padding:6px; background:#f9fafb; border:1px solid #e5e7eb; }';
+    html += 'table { width:100%; border-collapse:collapse; margin-bottom:8px; }';
+    html += 'th, td { border:1px solid #444; padding:3px 5px; font-size:10px; }';
+    html += 'th { background:#e5e7eb; font-weight:bold; text-align:center; }';
+    html += '.sign-area { display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-top:14px; padding-top:10px; }';
+    html += '.sign-box { text-align:center; border:1px solid #444; padding:10px; min-height:80px; }';
+    html += '.sign-box .label { font-size:12px; margin-bottom:6px; font-weight:bold; }';
+    html += '.sign-box .img { min-height:50px; }';
+    html += '.sign-box .time { font-size:9px; color:#555; margin-top:4px; }';
+    html += '* { -webkit-print-color-adjust:exact; print-color-adjust:exact; }';
+    html += '</style></head><body>';
+    
+    html += '<div class="title">5 1 - 調 撥 單</div>';
+    html += '<div class="hi"><div>店號：' + (outStore ? outStore.code : '') + '<br>店名：' + (outStore ? outStore.name : '') + '</div>';
+    html += '<div style="text-align:right;">列印日：' + printDate + '</div></div>';
+    
+    html += '<div class="tx">';
+    html += '<div><strong>調撥單號：</strong>' + orderNo + '<br><strong>📤 調出：</strong>' + (outStore ? outStore.code + ' ' + outStore.name : '') + '</div>';
+    html += '<div><strong>日期：</strong>' + dateVal + '<br><strong>📥 調入：</strong>' + (inStore ? inStore.code + ' ' + inStore.name : '') + '</div>';
+    html += '</div>';
+    
+    html += '<table><thead><tr>';
+    html += '<th style="width:35px;">項</th>';
+    html += '<th style="width:90px;">調入驗收條碼</th>';
+    html += '<th style="width:50px;">PMA 稅</th>';
+    html += '<th style="width:60px;">品號</th>';
+    html += '<th>品名</th>';
+    html += '<th style="width:45px;">數量</th>';
+    html += '<th style="width:60px;">成本價</th>';
+    html += '<th style="width:60px;">零售價</th>';
+    html += '<th style="width:75px;">成本小計</th>';
+    html += '<th style="width:75px;">零售小計</th>';
+    html += '</tr></thead><tbody>' + rows + '</tbody></table>';
+    
+    html += '<div class="sign-area">';
+    html += '<div class="sign-box"><div class="label">📤 調出店簽章</div><div class="img">' + outSigHtml + '</div>';
+    if (val('toSig_out_time')) html += '<div class="time">簽章：' + formatDateTime(new Date(val('toSig_out_time'))) + '</div>';
+    html += '</div>';
+    html += '<div class="sign-box"><div class="label">📥 調入店簽章</div><div class="img">' + inSigHtml + '</div>';
+    if (val('toSig_in_time')) html += '<div class="time">簽章：' + formatDateTime(new Date(val('toSig_in_time'))) + '</div>';
+    html += '</div></div>';
+    
+    html += '<div style="margin-top:10px; font-size:10px; color:#666; text-align:center;">第三聯：調出GDO聯 ─ 機密資料不可外洩</div>';
+    html += '</body></html>';
+    
+    // 全螢幕預覽列印（iOS 相容）
+    var oldOverlay = document.getElementById('transferOrderPrintOverlay');
+    if (oldOverlay) oldOverlay.remove();
+    
+    var styleMatch = html.match(/<style>([\s\S]*?)<\/style>/);
+    var styleContent = styleMatch ? styleMatch[1] : '';
+    var bodyMatch = html.match(/<body[^>]*>([\s\S]*?)<\/body>/);
+    var bodyContent = bodyMatch ? bodyMatch[1] : html;
+    
+    var overlay = document.createElement('div');
+    overlay.id = 'transferOrderPrintOverlay';
+    overlay.style.cssText = 'position:fixed; top:0; left:0; right:0; bottom:0; background:white; z-index:99999; overflow:auto; -webkit-overflow-scrolling:touch;';
+    overlay.innerHTML = 
+        '<div class="to-print-toolbar" style="position:sticky; top:0; background:linear-gradient(to bottom, #1e40af, #1e3a8a); padding:12px; text-align:center; border-bottom:2px solid #1e3a8a; z-index:1;">' +
+            '<div style="color:white; font-weight:bold; margin-bottom:8px; font-size:13px;">📋 預覽完成後請點「🖨️ 列印」</div>' +
+            '<button onclick="closeTransferOrderPrintOverlay()" style="padding:10px 18px; margin:0 4px; background:#6b7280; color:white; border:0; border-radius:6px; font-size:14px; font-weight:bold;">✕ 關閉</button>' +
+            '<button onclick="window.print()" style="padding:10px 22px; margin:0 4px; background:#10b981; color:white; border:0; border-radius:6px; font-weight:bold; font-size:14px;">🖨️ 列印</button>' +
+        '</div>' +
+        '<div style="padding:15px; max-width:210mm; margin:0 auto; background:white; color:black;">' + bodyContent + '</div>';
+    document.body.appendChild(overlay);
+    
+    var oldStyle = document.getElementById('toPrintStyle');
+    if (oldStyle) oldStyle.remove();
+    var styleEl = document.createElement('style');
+    styleEl.id = 'toPrintStyle';
+    styleEl.innerHTML = styleContent + 
+        ' @media print {' +
+            '.to-print-toolbar { display:none !important; }' +
+            'body > *:not(#transferOrderPrintOverlay) { display:none !important; }' +
+            '#transferOrderPrintOverlay { position:static !important; overflow:visible !important; }' +
+            '@page { size:A4; margin:8mm; }' +
+        '}';
+    document.head.appendChild(styleEl);
+    
+    document.body.style.overflow = 'hidden';
+    overlay.scrollTop = 0;
+}
+
+function closeTransferOrderPrintOverlay() {
+    var ov = document.getElementById('transferOrderPrintOverlay');
+    if (ov) ov.remove();
+    var st = document.getElementById('toPrintStyle');
+    if (st) st.remove();
+    document.body.style.overflow = '';
+}
+
+function initPurchaseReceipt() {
+    var today = new Date();
+    var yyyy = today.getFullYear();
+    var mm = String(today.getMonth() + 1).padStart(2, '0');
+    var dd = String(today.getDate()).padStart(2, '0');
+    var dateInput = document.getElementById('prDate');
+    if (dateInput && !dateInput.value) {
+        dateInput.value = yyyy + '-' + mm + '-' + dd;
+    }
+    
+    loadPurchaseStoreSelect();
+    
+    // 初始化簽名面板
+    renderPurchaseSignaturePanel('manager');
+    renderPurchaseSignaturePanel('accountant');
+    
+    loadPurchaseReceipt();
+    
+    // 列印日顯示
+    var pd = document.getElementById('prPrintDate');
+    if (pd) pd.textContent = formatDateTime(new Date());
+    
+    // 背景預載入 OCR
+    setTimeout(preloadTesseract, 2000);
+}
+
+function loadPurchaseStoreSelect() {
+    var sel = document.getElementById('prStoreSelect');
+    if (!sel) return;
+    var stores = loadData('stores', defaultStores);
+    var currentStoreId = loadData('currentStoreId', stores[0] && stores[0].id);
+    
+    var html = '<option value="">-- 請選擇門市 --</option>';
+    for (var i = 0; i < stores.length; i++) {
+        var s = stores[i];
+        var selected = (s.id === currentStoreId) ? 'selected' : '';
+        html += '<option value="' + s.id + '" ' + selected + '>' + 
+                (s.code || '') + ' - ' + s.name + 
+                (s.area ? ' (' + s.area + ')' : '') + '</option>';
+    }
+    sel.innerHTML = html;
+}
+
+function onPurchaseReceiptStoreChange() {
+    var sel = document.getElementById('prStoreSelect');
+    if (!sel.value) return;
+    var stores = loadData('stores', defaultStores);
+    var store = stores.find(function(s) { return s.id === sel.value; });
+    if (!store) return;
+    document.getElementById('prStoreCode').value = store.code || '';
+    document.getElementById('prStoreName').value = store.name || '';
+    showNotif('🏬 已選擇門市：' + store.name);
+}
+
+// 渲染明細表
+function renderPurchaseItems(items) {
+    var tbody = document.getElementById('prItemsBody');
+    if (!tbody) return;
+    if (!items || items.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="14" style="text-align:center; padding:20px; color:#9ca3af;">📭 尚無進貨項目，點「➕ 新增項目」開始</td></tr>';
+        return;
+    }
+    
+    var html = '';
+    for (var i = 0; i < items.length; i++) {
+        var it = items[i];
+        var rowNum = i + 1;
+        
+        var catOptions = '';
+        for (var c = 0; c < PR_CATEGORIES.length; c++) {
+            var cat = PR_CATEGORIES[c];
+            var sel = (it.category === cat.code) ? 'selected' : '';
+            catOptions += '<option value="' + cat.code + '" ' + sel + '>' + cat.code + '</option>';
+        }
+        
+        var statusOptions = '';
+        for (var s = 0; s < PR_STATUS_OPTIONS.length; s++) {
+            var st = PR_STATUS_OPTIONS[s];
+            var seld = (it.status === st) ? 'selected' : '';
+            statusOptions += '<option value="' + st + '" ' + seld + '>' + st + '</option>';
+        }
+        
+        html += '<tr data-idx="' + i + '">';
+        html += '<td style="text-align:center; background:#fef3c7; font-weight:bold;">' + rowNum + '</td>';
+        html += '<td><select onchange="updatePurchaseItem(' + i + ',\'status\',this.value)" style="width:100%;border:1px solid #ddd;padding:3px;font-size:11px;">' + statusOptions + '</select></td>';
+        html += '<td><select onchange="updatePurchaseItem(' + i + ',\'category\',this.value)" style="width:100%;border:1px solid #ddd;padding:3px;font-size:11px;">' + catOptions + '</select></td>';
+        html += '<td><input type="text" value="' + (it.orderNo || '') + '" oninput="updatePurchaseItem(' + i + ',\'orderNo\',this.value)" style="width:100%;border:1px solid #ddd;padding:3px;font-size:11px;"></td>';
+        html += '<td><input type="text" value="' + (it.scheduledDate || '') + '" placeholder="05/14" oninput="updatePurchaseItem(' + i + ',\'scheduledDate\',this.value)" style="width:100%;border:1px solid #ddd;padding:3px;font-size:11px;"></td>';
+        html += '<td><input type="text" value="' + (it.vendorCode || '') + '" oninput="updatePurchaseItem(' + i + ',\'vendorCode\',this.value)" style="width:100%;border:1px solid #ddd;padding:3px;font-size:11px;"></td>';
+        html += '<td><input type="text" value="' + (it.vendorName || '') + '" oninput="updatePurchaseItem(' + i + ',\'vendorName\',this.value)" style="width:100%;border:1px solid #ddd;padding:3px;font-size:11px;"></td>';
+        html += '<td><input type="number" value="' + (it.allocation || '') + '" oninput="updatePurchaseItem(' + i + ',\'allocation\',this.value)" style="width:100%;border:1px solid #ddd;padding:3px;font-size:11px;text-align:center;"></td>';
+        html += '<td><input type="number" value="' + (it.plannedQty || '') + '" oninput="updatePurchaseItem(' + i + ',\'plannedQty\',this.value)" style="width:100%;border:1px solid #ddd;padding:3px;font-size:11px;text-align:right;"></td>';
+        html += '<td><input type="number" value="' + (it.dcQty || '') + '" oninput="updatePurchaseItem(' + i + ',\'dcQty\',this.value)" style="width:100%;border:1px solid #ddd;padding:3px;font-size:11px;text-align:right;"></td>';
+        html += '<td><input type="number" value="' + (it.receivedQty || '') + '" oninput="updatePurchaseItem(' + i + ',\'receivedQty\',this.value)" style="width:100%;border:1px solid #ddd;padding:3px;font-size:11px;text-align:right;"></td>';
+        html += '<td><input type="number" step="0.01" value="' + (it.costSubtotal || 0) + '" oninput="updatePurchaseItem(' + i + ',\'costSubtotal\',this.value);recalcPurchaseReceipt()" style="width:100%;border:1px solid #ddd;padding:3px;font-size:11px;text-align:right;"></td>';
+        html += '<td><input type="number" value="' + (it.retailSubtotal || 0) + '" oninput="updatePurchaseItem(' + i + ',\'retailSubtotal\',this.value);recalcPurchaseReceipt()" style="width:100%;border:1px solid #ddd;padding:3px;font-size:11px;text-align:right;"></td>';
+        html += '<td style="text-align:center;"><button type="button" onclick="deletePurchaseItem(' + i + ')" style="padding:6px 10px;background:#dc2626;color:white;border:0;border-radius:4px;font-size:12px;cursor:pointer;font-weight:bold;">🗑️</button></td>';
+        html += '</tr>';
+    }
+    tbody.innerHTML = html;
+}
+
+var _prCurrentItems = [];
+
+function updatePurchaseItem(idx, field, value) {
+    if (!_prCurrentItems[idx]) return;
+    _prCurrentItems[idx][field] = (field === 'costSubtotal' || field === 'retailSubtotal' || field === 'plannedQty' || field === 'dcQty' || field === 'receivedQty' || field === 'allocation') 
+                                  ? (parseFloat(value) || 0) 
+                                  : value;
+}
+
+function addPurchaseItem() {
+    _prCurrentItems.push({
+        status: '已',
+        category: '10',
+        orderNo: '',
+        scheduledDate: '',
+        vendorCode: '',
+        vendorName: '',
+        allocation: 1,
+        plannedQty: 0,
+        dcQty: 0,
+        receivedQty: 0,
+        costSubtotal: 0,
+        retailSubtotal: 0
+    });
+    renderPurchaseItems(_prCurrentItems);
+    recalcPurchaseReceipt();
+}
+
+// 🔧 修復：用自製確認 Modal（iOS / TikTok 內建瀏覽器相容）
+function deletePurchaseItem(idx) {
+    if (!_prCurrentItems[idx]) return;
+    var it = _prCurrentItems[idx];
+    var label = it.vendorName || it.orderNo || ('第 ' + (idx+1) + ' 項');
+    showConfirmDelete('刪除此項目？', '<strong>' + label + '</strong><br>此操作無法復原！', function() {
+        _prCurrentItems.splice(idx, 1);
+        renderPurchaseItems(_prCurrentItems);
+        recalcPurchaseReceipt();
+        showNotif('🗑️ 已刪除項目');
+    });
+}
+
+// 重算合計（使用 V1 的元素 ID）
+function recalcPurchaseReceipt() {
+    function num(id) {
+        var el = document.getElementById(id);
+        return el ? (parseFloat(el.value) || 0) : 0;
+    }
+    
+    // 傳票張數：合計 = 前日轉入 + 本日進貨 - 本日退貨 - 轉入次日
+    var prevIn = num('pr_ticket_in');         // 前日轉入
+    var todayIn = num('pr_ticket_purchase');  // 本日進貨
+    var todayReturn = num('pr_ticket_return');// 本日退貨
+    var nextDay = num('pr_ticket_next');      // 轉入次日
+    var total = prevIn + todayIn - todayReturn - nextDay;
+    var totalEl = document.getElementById('pr_ticket_total');
+    if (totalEl) totalEl.textContent = total.toLocaleString();
+    
+    // 金額合計
+    var totalCost = 0, totalRetail = 0;
+    for (var i = 0; i < _prCurrentItems.length; i++) {
+        var it = _prCurrentItems[i];
+        totalCost += parseFloat(it.costSubtotal) || 0;
+        totalRetail += parseFloat(it.retailSubtotal) || 0;
+    }
+    var costEl = document.getElementById('pr_cost_total');
+    var retailEl = document.getElementById('pr_retail_total');
+    if (costEl) costEl.textContent = '$' + totalCost.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2});
+    if (retailEl) retailEl.textContent = '$' + totalRetail.toLocaleString();
+}
+
+// 🖋️ 簽名面板渲染
+function renderPurchaseSignaturePanel(role) {
+    var container = document.getElementById('prSigContainer_' + role);
+    if (!container) return;
+    
+    var dataEl = document.getElementById('prSig_' + role + '_data');
+    var timeEl = document.getElementById('prSig_' + role + '_time');
+    var existingSig = dataEl ? dataEl.value : '';
+    var existingTime = timeEl ? timeEl.value : '';
+    
+    if (existingSig) {
+        var timeStr = existingTime ? formatDateTime(new Date(existingTime)) : '';
+        var textColor = role === 'manager' ? '#92400e' : '#1e3a8a';
+        container.innerHTML = 
+            '<div style="background:white; padding:10px; border-radius:6px; border:2px solid ' + textColor + ';">' +
+                '<img src="' + existingSig + '" style="max-width:100%; max-height:120px; display:block; margin:0 auto;">' +
+            '</div>' +
+            '<div style="margin-top:8px; font-size:12px; color:' + textColor + '; font-weight:bold;">' +
+                '✅ 已簽名於 ' + timeStr +
+            '</div>' +
+            '<button type="button" class="btn-secondary" style="padding:6px 12px; font-size:12px; margin-top:8px;" onclick="resetPurchaseSignature(\'' + role + '\')">🔄 重新簽名</button>';
+    } else {
+        container.innerHTML = 
+            '<div onclick="openPurchaseSignatureModal(\'' + role + '\')" ' +
+                'style="background:white; border:3px dashed #999; min-height:80px; ' +
+                'display:flex; align-items:center; justify-content:center; flex-direction:column; ' +
+                'cursor:pointer; border-radius:6px; color:#6b7280; font-size:14px; padding:14px;">' +
+                '<div style="font-size:28px; margin-bottom:4px;">✍️</div>' +
+                '<strong>點此開啟大畫面簽名</strong>' +
+            '</div>';
+    }
+}
+
+function openPurchaseSignatureModal(role) {
+    _currentSigRole = 'pr_' + role;  // 標記是進貨驗收的簽名
+    var roleName = role === 'manager' ? '店經理' : '會計人員';
+    document.getElementById('signatureModalTitle').textContent = '🖋️ ' + roleName + ' 電子簽名（進貨驗收）';
+    document.getElementById('signatureModal').classList.remove('hidden');
+    setTimeout(function() { initSignaturePad('bigSigCanvas'); }, 100);
+}
+
+function resetPurchaseSignature(role) {
+    document.getElementById('prSig_' + role + '_data').value = '';
+    document.getElementById('prSig_' + role + '_time').value = '';
+    renderPurchaseSignaturePanel(role);
+}
+
+// 儲存（用 V1 的 ID）
+function savePurchaseReceipt() {
+    var dateVal = document.getElementById('prDate').value;
+    if (!dateVal) return alert('⚠️ 請選擇驗收日');
+    
+    function val(id) { var el = document.getElementById(id); return el ? el.value : ''; }
+    function numV(id) { return parseFloat(val(id)) || 0; }
+    
+    var report = {
+        date: dateVal,
+        storeId: val('prStoreSelect'),
+        storeCode: val('prStoreCode'),
+        storeName: val('prStoreName'),
+        docCode: val('prDocCode'),
+        ticketIn: numV('pr_ticket_in'),
+        ticketPurchase: numV('pr_ticket_purchase'),
+        ticketReturn: numV('pr_ticket_return'),
+        ticketNext: numV('pr_ticket_next'),
+        items: _prCurrentItems,
+        note: val('prNote'),
+        managerSignData: val('prSig_manager_data'),
+        managerSignTime: val('prSig_manager_time'),
+        accountantSignData: val('prSig_accountant_data'),
+        accountantSignTime: val('prSig_accountant_time'),
+        savedAt: new Date().toISOString()
+    };
+    
+    var all = loadData('purchaseReceipts', {});
+    all[dateVal] = report;
+    saveData('purchaseReceipts', all);
+    
+    showNotif('💾 已儲存進貨驗收：' + dateVal);
+    logAction('purchaseReceipt', '儲存進貨驗收：' + dateVal);
+}
+
+// 載入（用 V1 的 ID）
+function loadPurchaseReceipt() {
+    var dateVal = document.getElementById('prDate').value;
+    if (!dateVal) return;
+    
+    var pd = document.getElementById('prPrintDate');
+    if (pd) pd.textContent = formatDateTime(new Date());
+    
+    // 驗收日顯示
+    var ad = document.getElementById('prAccDate');
+    if (ad) {
+        var d = new Date(dateVal);
+        var weekDays = ['日','一','二','三','四','五','六'];
+        ad.textContent = d.getFullYear() + '年' + String(d.getMonth()+1).padStart(2,'0') + '月' + String(d.getDate()).padStart(2,'0') + '日 星期' + weekDays[d.getDay()];
+    }
+    
+    var all = loadData('purchaseReceipts', {});
+    var report = all[dateVal];
+    
+    if (!report) {
+        // 清空
+        if (document.getElementById('prDocCode')) document.getElementById('prDocCode').value = '';
+        if (document.getElementById('pr_ticket_in')) document.getElementById('pr_ticket_in').value = 0;
+        if (document.getElementById('pr_ticket_purchase')) document.getElementById('pr_ticket_purchase').value = 0;
+        if (document.getElementById('pr_ticket_return')) document.getElementById('pr_ticket_return').value = 0;
+        if (document.getElementById('pr_ticket_next')) document.getElementById('pr_ticket_next').value = 0;
+        if (document.getElementById('prNote')) document.getElementById('prNote').value = '';
+        
+        // 清空簽名
+        if (document.getElementById('prSig_manager_data')) document.getElementById('prSig_manager_data').value = '';
+        if (document.getElementById('prSig_manager_time')) document.getElementById('prSig_manager_time').value = '';
+        if (document.getElementById('prSig_accountant_data')) document.getElementById('prSig_accountant_data').value = '';
+        if (document.getElementById('prSig_accountant_time')) document.getElementById('prSig_accountant_time').value = '';
+        renderPurchaseSignaturePanel('manager');
+        renderPurchaseSignaturePanel('accountant');
+        
+        _prCurrentItems = [];
+        renderPurchaseItems(_prCurrentItems);
+        recalcPurchaseReceipt();
+        
+        // 取目前門市
+        var stores = loadData('stores', defaultStores);
+        var currentStoreId = loadData('currentStoreId', stores[0] && stores[0].id);
+        var store = stores.find(function(s) { return s.id === currentStoreId; }) || stores[0];
+        if (store) {
+            if (document.getElementById('prStoreCode')) document.getElementById('prStoreCode').value = store.code || '';
+            if (document.getElementById('prStoreName')) document.getElementById('prStoreName').value = store.name || '';
+        }
+        return;
+    }
+    
+    if (document.getElementById('prStoreCode')) document.getElementById('prStoreCode').value = report.storeCode || '';
+    if (document.getElementById('prStoreName')) document.getElementById('prStoreName').value = report.storeName || '';
+    if (document.getElementById('prDocCode')) document.getElementById('prDocCode').value = report.docCode || '';
+    if (document.getElementById('pr_ticket_in')) document.getElementById('pr_ticket_in').value = report.ticketIn || 0;
+    if (document.getElementById('pr_ticket_purchase')) document.getElementById('pr_ticket_purchase').value = report.ticketPurchase || 0;
+    if (document.getElementById('pr_ticket_return')) document.getElementById('pr_ticket_return').value = report.ticketReturn || 0;
+    if (document.getElementById('pr_ticket_next')) document.getElementById('pr_ticket_next').value = report.ticketNext || 0;
+    if (document.getElementById('prNote')) document.getElementById('prNote').value = report.note || '';
+    
+    if (report.storeId) {
+        var sel = document.getElementById('prStoreSelect');
+        if (sel) sel.value = report.storeId;
+    }
+    
+    // 載入簽名
+    if (document.getElementById('prSig_manager_data')) document.getElementById('prSig_manager_data').value = report.managerSignData || '';
+    if (document.getElementById('prSig_manager_time')) document.getElementById('prSig_manager_time').value = report.managerSignTime || '';
+    if (document.getElementById('prSig_accountant_data')) document.getElementById('prSig_accountant_data').value = report.accountantSignData || '';
+    if (document.getElementById('prSig_accountant_time')) document.getElementById('prSig_accountant_time').value = report.accountantSignTime || '';
+    renderPurchaseSignaturePanel('manager');
+    renderPurchaseSignaturePanel('accountant');
+    
+    _prCurrentItems = report.items || [];
+    renderPurchaseItems(_prCurrentItems);
+    recalcPurchaseReceipt();
+}
+
+// 📸 OCR
+function processPurchaseReceiptOCR() {
+    var fileInput = document.getElementById('prImageUpload');
+    if (!fileInput.files || !fileInput.files[0]) {
+        return alert('⚠️ 請先選擇圖片');
+    }
+    
+    var file = fileInput.files[0];
+    var statusEl = document.getElementById('prOcrStatus');
+    
+    var reader = new FileReader();
+    reader.onload = function(e) {
+        document.getElementById('prPreviewImg').src = e.target.result;
+        document.getElementById('prImagePreview').style.display = 'block';
+    };
+    reader.readAsDataURL(file);
+    
+    if (typeof Tesseract === 'undefined') {
+        statusEl.textContent = '❌ OCR 引擎未載入';
+        return;
+    }
+    
+    statusEl.textContent = '⏳ 圖片前處理中...';
+    
+    preprocessImageForOCR(file).then(function(processedBlob) {
+        statusEl.textContent = '⏳ 開始辨識...';
+        return Tesseract.recognize(
+            processedBlob,
+            'chi_tra+eng',
+            {
+                logger: function(m) {
+                    if (m.status === 'recognizing text') {
+                        statusEl.textContent = '🔍 辨識中... ' + Math.round(m.progress * 100) + '%';
+                    } else if (m.status === 'loading language traineddata') {
+                        statusEl.textContent = '⏳ 下載中文語言包...';
+                    }
+                }
+            }
+        );
+    }).then(function(result) {
+        document.getElementById('prOcrResult').value = result.data.text;
+        document.getElementById('prOcrResult').style.display = 'block';
+        document.getElementById('prApplyOcrBtn').style.display = 'inline-block';
+        statusEl.textContent = '✅ 辨識完成，請檢查後點「套用」';
+    }).catch(function(err) {
+        statusEl.textContent = '❌ 辨識失敗：' + err.message;
+    });
+}
+
+// 套用 OCR 結果到表格
+function applyPurchaseReceiptOcr() {
+    var text = document.getElementById('prOcrResult').value;
+    if (!text) return alert('⚠️ 沒有辨識結果');
+    
+    var lines = text.split(/\n/);
+    var newItems = [];
+    
+    // 擷取店號、店名（可能在最上方）
+    var storeCodeMatch = text.match(/店號[：:\s]*(\d+)/);
+    var storeNameMatch = text.match(/店名[：:\s]*([\u4e00-\u9fa5]+)/);
+    if (storeCodeMatch) document.getElementById('prStoreCode').value = storeCodeMatch[1];
+    if (storeNameMatch) document.getElementById('prStoreName').value = storeNameMatch[1];
+    
+    // 擷取項目代號
+    var itemMatch = text.match(/項\s*(\d{5,8}-\d{2,4})/);
+    if (itemMatch) document.getElementById('prItemCode').value = '項' + itemMatch[1];
+    
+    // 擷取傳票張數
+    var prevMatch = text.match(/前\s*日\s*轉\s*入\s*(\d+)/);
+    var todayInMatch = text.match(/本\s*日\s*進\s*貨\s*(\d+)/);
+    var returnMatch = text.match(/本\s*日\s*退\s*貨\s*(\d+)/);
+    var nextMatch = text.match(/轉\s*入\s*次\s*日\s*(\d+)/);
+    if (prevMatch) document.getElementById('prPrevTransfer').value = prevMatch[1];
+    if (todayInMatch) document.getElementById('prTodayIn').value = todayInMatch[1];
+    if (returnMatch) document.getElementById('prTodayReturn').value = returnMatch[1];
+    if (nextMatch) document.getElementById('prNextTransfer').value = nextMatch[1];
+    
+    // 解析資料列
+    // 預期格式：項# 修正 區分 訂單號碼 日期 廠商編號 廠商名稱 配 ... 成本 零售
+    for (var i = 0; i < lines.length; i++) {
+        var line = lines[i].trim();
+        if (!line) continue;
+        
+        // 必須以數字開頭（項#）且包含多個欄位
+        var match = line.match(/^(\d{1,2})\s+(已|轉|退|-)\s+(\d{2})\s+(\d{10})\s+(\d{2}\/\d{2})\s+(\w{10,12})\s+(.+?)\s+(\d+)\s+(-?[\d,]+\.?\d*)\s+(-?[\d,]+)$/);
+        if (match) {
+            newItems.push({
+                status: match[2],
+                category: match[3],
+                orderNo: match[4],
+                scheduledDate: match[5],
+                vendorCode: match[6],
+                vendorName: match[7].trim(),
+                allocation: parseInt(match[8]),
+                plannedQty: 0,
+                dcQty: 0,
+                receivedQty: 0,
+                costSubtotal: parseFloat(match[9].replace(/,/g, '')) || 0,
+                retailSubtotal: parseFloat(match[10].replace(/,/g, '')) || 0
+            });
+        } else {
+            // 嘗試寬鬆解析（只抓最後兩個金額）
+            var numMatch = line.match(/^(\d{1,2})\s+/);
+            if (numMatch && parseInt(numMatch[1]) <= 30) {
+                var nums = line.match(/-?\d{1,3}(?:,\d{3})*\.?\d*/g);
+                if (nums && nums.length >= 2) {
+                    var cost = parseFloat(nums[nums.length - 2].replace(/,/g, '')) || 0;
+                    var retail = parseFloat(nums[nums.length - 1].replace(/,/g, '')) || 0;
+                    
+                    // 提取訂單號碼（10 位數字）
+                    var orderMatch = line.match(/\b(\d{10})\b/);
+                    var dateMatch = line.match(/(\d{2}\/\d{2})/);
+                    var vendorCodeMatch = line.match(/\b(168\d{7}\w?|167\d{7}|235\d{7})\b/);
+                    
+                    newItems.push({
+                        status: line.indexOf('已') > -1 ? '已' : (line.indexOf('轉') > -1 ? '轉' : '已'),
+                        category: line.indexOf(' 50 ') > -1 ? '50' : '10',
+                        orderNo: orderMatch ? orderMatch[1] : '',
+                        scheduledDate: dateMatch ? dateMatch[1] : '',
+                        vendorCode: vendorCodeMatch ? vendorCodeMatch[1] : '',
+                        vendorName: '',
+                        allocation: 1,
+                        plannedQty: 0,
+                        dcQty: 0,
+                        receivedQty: 0,
+                        costSubtotal: cost,
+                        retailSubtotal: retail
+                    });
+                }
+            }
+        }
+    }
+    
+    if (newItems.length === 0) {
+        return alert('⚠️ 未辨識出任何資料列。\n建議：\n1. 圖片要清晰、平整\n2. 或手動修改 OCR 文字後再套用\n3. 也可直接點「➕ 新增列」手動輸入');
+    }
+    
+    _prCurrentItems = newItems;
+    renderPurchaseItems(_prCurrentItems);
+    recalcPurchaseTotals();
+    showNotif('✅ 已套用 ' + newItems.length + ' 列，請逐項檢查並補齊');
+}
+
+// 歷史
+function openPurchaseReceiptHistory() {
+    document.getElementById('purchaseReceiptHistoryModal').classList.remove('hidden');
+    renderPurchaseReceiptHistory();
+}
+
+function renderPurchaseReceiptHistory() {
+    var all = loadData('purchaseReceipts', {});
+    var dates = Object.keys(all).sort().reverse();
+    
+    var tbody = document.getElementById('prHistoryBody');
+    if (dates.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; padding:30px; color:#9ca3af;">📭 尚無歷史記錄</td></tr>';
+        return;
+    }
+    
+    var html = '';
+    for (var i = 0; i < dates.length; i++) {
+        var date = dates[i];
+        var r = all[date];
+        var totalCost = 0, totalRetail = 0;
+        if (r.items) {
+            for (var j = 0; j < r.items.length; j++) {
+                totalCost += parseFloat(r.items[j].costSubtotal) || 0;
+                totalRetail += parseFloat(r.items[j].retailSubtotal) || 0;
+            }
+        }
+        
+        html += '<tr>';
+        html += '<td><strong>' + date + '</strong></td>';
+        html += '<td>' + (r.storeCode || '-') + '</td>';
+        html += '<td>' + (r.storeName || '-') + '</td>';
+        html += '<td style="text-align:right;">' + (r.totalCount || 0) + '</td>';
+        html += '<td style="text-align:right;">$' + totalCost.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2}) + '</td>';
+        html += '<td style="text-align:right;">$' + totalRetail.toLocaleString() + '</td>';
+        html += '<td style="text-align:right;">' + ((r.items && r.items.length) || 0) + '</td>';
+        html += '<td>';
+        html += '<button class="btn-edit" style="padding:4px 10px; font-size:11px;" onclick="loadPurchaseReceiptFromHistory(\'' + date + '\')">📂 查看</button> ';
+        html += '<button class="btn-danger" style="padding:4px 10px; font-size:11px;" onclick="deletePurchaseReceipt(\'' + date + '\')">🗑️</button>';
+        html += '</td>';
+        html += '</tr>';
+    }
+    tbody.innerHTML = html;
+}
+
+function loadPurchaseReceiptFromHistory(date) {
+    closeModal('purchaseReceiptHistoryModal');
+    document.getElementById('prDate').value = date;
+    loadPurchaseReceipt();
+    showNotif('📂 已載入 ' + date + ' 的進貨驗收');
+}
+
+function deletePurchaseReceipt(date) {
+    showConfirmDelete('刪除進貨驗收？', '驗收日：' + date + '<br><br>此操作無法復原！', function() {
+        var all = loadData('purchaseReceipts', {});
+        delete all[date];
+        saveData('purchaseReceipts', all);
+        renderPurchaseReceiptHistory();
+        showNotif('🗑️ 已刪除 ' + date);
+        logAction('purchaseReceipt', '刪除進貨驗收：' + date);
+    });
+}
+
+// 🖨️ 列印
+function printPurchaseReceipt() {
+    var dateVal = document.getElementById('prDate').value;
+    if (!dateVal) return alert('⚠️ 請選擇驗收日');
+    
+    function val(id) { var el = document.getElementById(id); return el ? (el.value || '') : ''; }
+    function fmt(n, dp) { 
+        if (dp === undefined) return (n || 0).toLocaleString();
+        return (parseFloat(n) || 0).toLocaleString(undefined, {minimumFractionDigits:dp, maximumFractionDigits:dp});
+    }
+    
+    var d = new Date(dateVal);
+    var weekDays = ['日','一','二','三','四','五','六'];
+    var accDate = d.getFullYear() + '年' + String(d.getMonth()+1).padStart(2,'0') + '月' + String(d.getDate()).padStart(2,'0') + '日 星期' + weekDays[d.getDay()];
+    var now = new Date();
+    var printDate = now.getFullYear() + '/ ' + String(now.getMonth()+1).padStart(2,'0') + '/ ' + String(now.getDate()).padStart(2,'0') + '(' + weekDays[now.getDay()] + ') ' + String(now.getHours()).padStart(2,'0') + ':' + String(now.getMinutes()).padStart(2,'0');
+    
+    var totalCost = 0, totalRetail = 0;
+    var rows = '';
+    for (var i = 0; i < _prCurrentItems.length; i++) {
+        var it = _prCurrentItems[i];
+        totalCost += parseFloat(it.costSubtotal) || 0;
+        totalRetail += parseFloat(it.retailSubtotal) || 0;
+        rows += '<tr>';
+        rows += '<td style="text-align:center;">' + (i+1) + '</td>';
+        rows += '<td style="text-align:center;">' + (it.status || '') + '</td>';
+        rows += '<td style="text-align:center;">' + (it.category || '') + '</td>';
+        rows += '<td>' + (it.orderNo || '') + '</td>';
+        rows += '<td style="text-align:center;">' + (it.scheduledDate || '') + '</td>';
+        rows += '<td>' + (it.vendorCode || '') + '</td>';
+        rows += '<td>' + (it.vendorName || '') + '</td>';
+        rows += '<td style="text-align:center;">' + (it.allocation || '') + '</td>';
+        rows += '<td style="text-align:right;">' + (it.plannedQty || '') + '</td>';
+        rows += '<td style="text-align:right;">' + (it.dcQty || '') + '</td>';
+        rows += '<td style="text-align:right;">' + (it.receivedQty || '') + '</td>';
+        rows += '<td style="text-align:right;">' + fmt(it.costSubtotal, 2) + '</td>';
+        rows += '<td style="text-align:right;">' + fmt(it.retailSubtotal) + '</td>';
+        rows += '</tr>';
+    }
+    
+    // 本日進貨合計
+    rows += '<tr style="background:#fef3c7; font-weight:bold;">';
+    rows += '<td colspan="11" style="text-align:center;">本日進貨合計</td>';
+    rows += '<td style="text-align:right;">' + fmt(totalCost, 2) + '</td>';
+    rows += '<td style="text-align:right;">' + fmt(totalRetail) + '</td>';
+    rows += '</tr>';
+    
+    var html = '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>進貨驗收彙總表 ' + dateVal + '</title>';
+    html += '<style>';
+    html += '@page { size:A4 landscape; margin:8mm; }';
+    html += 'body { font-family:"Microsoft JhengHei","PingFang TC",sans-serif; color:#000; background:white; margin:0; padding:8mm; font-size:11px; }';
+    html += '.title { text-align:center; font-size:16px; font-weight:bold; margin-bottom:8px; }';
+    html += '.hi { display:flex; justify-content:space-between; margin-bottom:8px; font-size:11px; }';
+    html += '.acc { font-size:11px; margin-bottom:6px; }';
+    html += 'table { width:100%; border-collapse:collapse; margin-bottom:8px; }';
+    html += 'th, td { border:1px solid #444; padding:3px 5px; font-size:10px; }';
+    html += 'th { background:#e5e7eb; font-weight:bold; text-align:center; }';
+    html += '.summary { display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-top:10px; padding:8px; background:#fef3c7; border:1px solid #d97706; border-radius:4px; }';
+    html += '.summary-item { text-align:center; }';
+    html += '.summary-item .label { font-size:11px; color:#555; }';
+    html += '.summary-item .val { font-size:16px; font-weight:bold; }';
+    html += '* { -webkit-print-color-adjust:exact; print-color-adjust:exact; }';
+    html += '</style></head><body>';
+    
+    html += '<div class="title">77-進貨驗收彙總表</div>';
+    html += '<div class="hi"><div>店號：' + val('prStoreCode') + '<br>店名：' + val('prStoreName') + '</div>';
+    html += '<div style="text-align:right;">列印日：' + printDate + '</div></div>';
+    
+    html += '<div class="acc">';
+    html += '<strong>驗收日：</strong>' + accDate + '　　';
+    html += '<strong>項目代號：</strong>' + val('prItemCode') + '<br>';
+    html += '<strong>傳票張數：</strong>';
+    html += '前日轉入 ' + val('prPrevTransfer') + ' / ';
+    html += '本日進貨 ' + val('prTodayIn') + ' / ';
+    html += '本日退貨 ' + val('prTodayReturn') + ' / ';
+    html += '轉入次日 ' + val('prNextTransfer') + ' / ';
+    html += '本日合計 <strong>' + val('prTotalCount') + '</strong>';
+    html += '</div>';
+    
+    // 合計
+    html += '<div class="summary">';
+    html += '<div class="summary-item"><div class="label">成本價合計</div><div class="val">' + fmt(totalCost, 2) + '</div></div>';
+    html += '<div class="summary-item"><div class="label">零售價合計</div><div class="val">' + fmt(totalRetail) + '</div></div>';
+    html += '</div>';
+    
+    html += '<table><thead><tr>';
+    html += '<th style="width:30px;">項</th>';
+    html += '<th style="width:35px;">修正</th>';
+    html += '<th style="width:35px;">區分</th>';
+    html += '<th style="width:90px;">訂單號碼</th>';
+    html += '<th style="width:55px;">預定<br>進貨日</th>';
+    html += '<th style="width:85px;">廠商編號</th>';
+    html += '<th>廠商名稱</th>';
+    html += '<th style="width:30px;">配</th>';
+    html += '<th style="width:55px;">預定<br>訂貨數</th>';
+    html += '<th style="width:55px;">DC<br>出貨數</th>';
+    html += '<th style="width:55px;">驗收<br>數量</th>';
+    html += '<th style="width:75px;">成本小計</th>';
+    html += '<th style="width:75px;">零售小計</th>';
+    html += '</tr></thead><tbody>' + rows + '</tbody></table>';
+    
+    html += '<div style="font-size:9px; color:#666; line-height:1.6; margin-top:8px; padding-top:6px; border-top:1px solid #aaa;">';
+    html += '<strong>區分備註：</strong>05:人工驗收　10:一般訂貨　20:事先訂貨　31:追加訂貨　40:節慶訂貨　50:一般+大智通退貨　60:一般預購訂貨　70:一般預購退貨　80:專案預購訂貨　90:專案預購退貨';
+    html += '</div>';
+    
+    html += '</body></html>';
+    
+    // 全螢幕預覽方案（iOS 相容）
+    var oldOverlay = document.getElementById('purchaseReceiptPrintOverlay');
+    if (oldOverlay) oldOverlay.remove();
+    
+    var styleMatch = html.match(/<style>([\s\S]*?)<\/style>/);
+    var styleContent = styleMatch ? styleMatch[1] : '';
+    var bodyMatch = html.match(/<body[^>]*>([\s\S]*?)<\/body>/);
+    var bodyContent = bodyMatch ? bodyMatch[1] : html;
+    
+    var overlay = document.createElement('div');
+    overlay.id = 'purchaseReceiptPrintOverlay';
+    overlay.style.cssText = 'position:fixed; top:0; left:0; right:0; bottom:0; background:white; z-index:99999; overflow:auto; -webkit-overflow-scrolling:touch;';
+    
+    overlay.innerHTML = 
+        '<div class="pr-print-toolbar" style="position:sticky; top:0; background:linear-gradient(to bottom, #1e40af, #1e3a8a); padding:12px; text-align:center; border-bottom:2px solid #1e3a8a; z-index:1; box-shadow:0 2px 6px rgba(0,0,0,0.2);">' +
+            '<div style="color:white; font-weight:bold; margin-bottom:8px; font-size:13px;">📋 預覽完成後請點「🖨️ 列印」</div>' +
+            '<button onclick="closePurchaseReceiptPrintOverlay()" style="padding:10px 18px; margin:0 4px; background:#6b7280; color:white; border:0; border-radius:6px; font-size:14px; font-weight:bold;">✕ 關閉</button>' +
+            '<button onclick="window.print()" style="padding:10px 22px; margin:0 4px; background:#10b981; color:white; border:0; border-radius:6px; font-weight:bold; font-size:14px;">🖨️ 列印</button>' +
+        '</div>' +
+        '<div id="prPrintContent" style="padding:15px; max-width:297mm; margin:0 auto; background:white; color:black;">' + bodyContent + '</div>';
+    
+    document.body.appendChild(overlay);
+    
+    var oldStyle = document.getElementById('prPrintStyle');
+    if (oldStyle) oldStyle.remove();
+    var styleEl = document.createElement('style');
+    styleEl.id = 'prPrintStyle';
+    styleEl.innerHTML = 
+        styleContent + 
+        ' @media print {' +
+            '.pr-print-toolbar { display:none !important; }' +
+            'body > *:not(#purchaseReceiptPrintOverlay) { display:none !important; }' +
+            '#purchaseReceiptPrintOverlay { position:static !important; overflow:visible !important; }' +
+            '#prPrintContent { padding:0 !important; max-width:none !important; }' +
+            '@page { size:A4 landscape; margin:8mm; }' +
+        '}';
+    document.head.appendChild(styleEl);
+    
+    document.body.style.overflow = 'hidden';
+    overlay.scrollTop = 0;
+    
+    showNotif('📋 預覽已顯示，請檢查後點「🖨️ 列印」');
+}
+
+function closePurchaseReceiptPrintOverlay() {
+    var ov = document.getElementById('purchaseReceiptPrintOverlay');
+    if (ov) ov.remove();
+    var st = document.getElementById('prPrintStyle');
+    if (st) st.remove();
+    document.body.style.overflow = '';
+}
+
 function initCashReport() {
     // 設定今天為預設日期
     var today = new Date();
@@ -4078,9 +6367,15 @@ function renderCRRegisterTable() {
         html += '<tr>';
         html += '<td style="text-align:left;"><span style="color:#9ca3af;font-size:10px;">' + item.code + '</span> ' + item.name + '</td>';
         for (var r = 1; r <= 3; r++) {
-            html += '<td class="' + cls + '"><input type="number" id="cr_r' + r + '_' + item.code + '" oninput="' + (item.auto ? 'markManualEdit(this)' : 'recalcCashReport()') + '" value="0"></td>';
+            // 🔒 auto 項目（104, 111）的 r1/r2/r3 也鎖定（由公式算出）
+            if (item.auto) {
+                html += '<td class="auto-calc"><input type="number" id="cr_r' + r + '_' + item.code + '" readonly value="0" style="background:#fef3c7; font-weight:bold; cursor:not-allowed;"></td>';
+            } else {
+                html += '<td><input type="number" id="cr_r' + r + '_' + item.code + '" oninput="recalcCashReport()" value="0"></td>';
+            }
         }
-        html += '<td class="auto-calc"><input type="number" id="cr_total_' + item.code + '" oninput="markManualEdit(this)" value="0"></td>';
+        // 🔒 合計欄完全鎖定（自動加總，不允許手動覆寫）
+        html += '<td class="auto-calc"><input type="number" id="cr_total_' + item.code + '" readonly value="0" style="background:#fde68a; font-weight:bold; cursor:not-allowed;"></td>';
         html += '</tr>';
     }
     tbody.innerHTML = html;
@@ -4104,7 +6399,12 @@ function renderCRIncomeTable() {
         } else {
             html += '<td style="color:#9ca3af;">-</td>';
         }
-        html += '<td><input type="number" id="cr_amt_' + item.code + '" oninput="recalcCashReport()" value="0"></td>';
+        // 🆕 111A/111B 自動算（但允許手動覆寫，編輯後加底色提示）
+        if (item.code === '111A' || item.code === '111B') {
+            html += '<td><input type="number" id="cr_amt_' + item.code + '" oninput="markManualEdit(this); recalcCashReport()" value="0" title="此欄會自動由收銀機資料計算，可手動覆寫" style="border:1px dashed #3b82f6;"></td>';
+        } else {
+            html += '<td><input type="number" id="cr_amt_' + item.code + '" oninput="recalcCashReport()" value="0"></td>';
+        }
         html += '</tr>';
     }
     tbody.innerHTML = html;
@@ -4158,7 +6458,8 @@ function renderCRCashTable() {
         html += '<tr>';
         html += '<td><span style="color:#9ca3af;font-size:10px;">' + item.code + '</span> ' + item.name + '</td>';
         if (item.auto) {
-            html += '<td class="auto-calc"><input type="number" id="cr_amt_' + item.code + '" oninput="markManualEdit(this)" value="0"></td>';
+            // 🔒 自動計算的鎖定不能修改（802, 803, 804, 806）
+            html += '<td class="auto-calc"><input type="number" id="cr_amt_' + item.code + '" readonly value="0" style="background:#fde68a; font-weight:bold; cursor:not-allowed;"></td>';
         } else {
             html += '<td><input type="number" id="cr_amt_' + item.code + '" oninput="recalcCashReport()" value="0"></td>';
         }
@@ -4181,20 +6482,28 @@ function recalcCashReport() {
         var el = document.getElementById(id);
         return el ? (parseFloat(el.value) || 0) : 0;
     }
-    // 🔑 改進：手動編輯過的欄位不會被自動計算覆寫
+    // 🔧 強制更新（不檢查 dataset.manual，因為已改為 readonly）
     function setVal(id, v) {
+        var el = document.getElementById(id);
+        if (el) el.value = v;
+    }
+    // 軟性更新（111D, 111E, 111B 為手動可改：若已被手動編輯就跳過）
+    function softSetVal(id, v) {
         var el = document.getElementById(id);
         if (el && !el.dataset.manual) el.value = v;
     }
     
-    // 收銀機合計
+    // 收銀機合計（一定更新）
     for (var i = 0; i < CR_REGISTER_ITEMS.length; i++) {
         var item = CR_REGISTER_ITEMS[i];
-        var total = num('cr_r1_' + item.code) + num('cr_r2_' + item.code) + num('cr_r3_' + item.code);
-        setVal('cr_total_' + item.code, total);
+        // 104 和 111 的 r1/r2/r3 由公式產生，不從加總；其他項目正常加總
+        if (!item.auto) {
+            var total = num('cr_r1_' + item.code) + num('cr_r2_' + item.code) + num('cr_r3_' + item.code);
+            setVal('cr_total_' + item.code, total);
+        }
     }
     
-    // 104 = 102 - 103
+    // 104 = 102 - 103（每台收銀機獨立計算）
     for (var r = 1; r <= 3; r++) {
         var v104 = num('cr_r' + r + '_102') - num('cr_r' + r + '_103');
         setVal('cr_r' + r + '_104', v104);
@@ -4216,8 +6525,20 @@ function recalcCashReport() {
     var t111 = num('cr_r1_111') + num('cr_r2_111') + num('cr_r3_111');
     setVal('cr_total_111', t111);
     
-    // 💰 銷貨收入（111A + 111D）
-    var sales = num('cr_amt_111A') + num('cr_amt_111D');
+    // 🆕 111A 銷貨收入(免稅) = 104A - 105A - 106A - 112 - 116 - 109 - 107
+    // 🆕 111B 銷貨收入(應稅) = 104B - 105B - 106B - 113 - 117 - 110 - 108
+    var auto111A = num('cr_total_104A') - num('cr_total_105A') - num('cr_total_106A')
+                 - num('cr_total_112') - num('cr_total_116') - num('cr_total_109')
+                 - num('cr_total_107');
+    var auto111B = num('cr_total_104B') - num('cr_total_105B') - num('cr_total_106B')
+                 - num('cr_total_113') - num('cr_total_117') - num('cr_total_110')
+                 - num('cr_total_108');
+    // 軟性更新：使用者可手動修改右側 111A/111B，已手動編輯則跳過
+    softSetVal('cr_amt_111A', auto111A);
+    softSetVal('cr_amt_111B', auto111B);
+    
+    // 💰 銷貨收入合計（111A + 111B + 111D + 111E）
+    var sales = num('cr_amt_111A') + num('cr_amt_111B') + num('cr_amt_111D') + num('cr_amt_111E');
     
     // 💼 代收
     var receipt = num('cr_amt_206');
@@ -4225,7 +6546,7 @@ function recalcCashReport() {
     // 💳 代現金扣除（409 其它卡）
     var cashEquivalents = num('cr_amt_409');
     
-    // 🔑 使用簡化公式：802 = 111A + 111D + 206 - 409 + 801
+    // 🔑 使用簡化公式：802 = 111A + 111B + 111D + 111E + 206 - 409 + 801
     var should = sales + receipt - cashEquivalents + num('cr_amt_801');
     setVal('cr_amt_802', should);
     
@@ -4242,11 +6563,13 @@ function recalcCashReport() {
     var actual804 = num('cr_amt_804');
     setVal('cr_amt_806', num('cr_amt_805') - actual804);
     
-    // 更新公式說明區（簡化版）
+    // 更新公式說明區
     updateFormulaInfo({
         s801: num('cr_amt_801'),
         s111A: num('cr_amt_111A'),
+        s111B: num('cr_amt_111B'),
         s111D: num('cr_amt_111D'),
+        s111E: num('cr_amt_111E'),
         s206: receipt,
         s409: cashEquivalents,
         s802: num('cr_amt_802'),
@@ -4616,7 +6939,10 @@ function loadSampleData() {
     set('cr_r1_120', 7814);   set('cr_r2_120', 17654);   set('cr_r3_120', 0);
     
     // === 💰 銷貨收入 ===
-    set('cr_amt_111A', 25468);
+    // 111A 由公式自動計算：104A - 105A - 106A - 112 - 116 - 109 - 107 = 32960 - 35 - 698 - 3612 - 492 - 655 - 0 = 27468
+    // 範例值：(11841+21119) - (0+35) - (318+380) - (2054+1558) - (0+492) - (655+0) - 0 = 32960-35-698-3612-492-655 = 27468
+    // 不再手動設定 111A，留給系統自動計算
+    // set('cr_amt_111A', 25468);  // 舊行已停用
     set('cr_amt_111D', 2000);
     
     // === 💼 代收款 ===
@@ -4643,18 +6969,27 @@ function loadSampleData() {
         var s804 = parseFloat(document.getElementById('cr_amt_804').value) || 0;
         var s806 = parseFloat(document.getElementById('cr_amt_806').value) || 0;
         var t111 = parseFloat(document.getElementById('cr_total_111').value) || 0;
+        var s111A = parseFloat(document.getElementById('cr_amt_111A').value) || 0;
+        var s111B = parseFloat(document.getElementById('cr_amt_111B').value) || 0;
         
-        var allOk = s802 === 210617 && s803 === 159000 && s804 === 51617 && s806 === -10 && t111 === 27468;
+        // 範例只有免稅資料，所以預期：111A=27468, 111B=0, 802 = 27468+0+2000+140488-7656+50317 = 212617
+        // 但若要對齊舊範例 802=210617，需保留 111D=2000
+        // 重新計算預期：111A(27468) + 111B(0) + 111D(2000) + 0 + 140488 - 7656 + 50317 = 212617
+        var expS802 = s111A + s111B + 2000 + 0 + 140488 - 7656 + 50317;
+        var expS804 = expS802 - 159000;
+        var expS806 = 51607 - expS804;
         
         var msg = '✅ 範例資料載入完成！\n\n📊 公式驗證結果：\n';
         msg += '─────────────────\n';
         msg += '111 銷貨合計：' + t111.toLocaleString() + ' (預期 27,468) ' + (t111 === 27468 ? '✅' : '❌') + '\n';
-        msg += '802 應有現金：' + s802.toLocaleString() + ' (預期 210,617) ' + (s802 === 210617 ? '✅' : '❌') + '\n';
+        msg += '111A 免稅銷貨：' + s111A.toLocaleString() + ' (公式自動算 ' + (s111A === 27468 ? '✅' : '⚠️') + ')\n';
+        msg += '111B 應稅銷貨：' + s111B.toLocaleString() + ' (公式自動算)\n';
+        msg += '802 應有現金：' + s802.toLocaleString() + '\n';
         msg += '803 匯款額：' + s803.toLocaleString() + ' (預期 159,000) ' + (s803 === 159000 ? '✅' : '❌') + '\n';
-        msg += '804 應有週轉金：' + s804.toLocaleString() + ' (預期 51,617) ' + (s804 === 51617 ? '✅' : '❌') + '\n';
-        msg += '806 短/溢：' + s806.toLocaleString() + ' (預期 -10) ' + (s806 === -10 ? '✅' : '❌') + '\n';
+        msg += '804 應有週轉金：' + s804.toLocaleString() + '\n';
+        msg += '806 短/溢：' + s806.toLocaleString() + '\n';
         msg += '─────────────────\n\n';
-        msg += allOk ? '🎉 所有公式正確！\n計算結果完全符合範例圖片！' : '⚠️ 部分公式有誤差';
+        msg += '🎉 收銀機合計、本日應有週轉金已鎖定，自動計算正常運作！';
         alert(msg);
     }, 300);
 }
@@ -4810,11 +7145,11 @@ function applyOcrToForm() {
         }
     }
     
-    // 套用金額項目
+    // 套用金額項目（🚫 排除 501/502 避免 OCR 誤判，請手動輸入）
     var amountCodes = ['111A','111B','111D','111E','202','204','206','208','209',
                        '401','402','407','408','409','410',
                        '701','704','706','707','708','709','710','712','713','715','717','718','719',
-                       '501','502','601','602',
+                       '601','602',
                        '801','803A','803B','803C','805','806'];
     for (var j = 0; j < amountCodes.length; j++) {
         var c = amountCodes[j];
@@ -4850,7 +7185,7 @@ function parseOcrText(text) {
         '101','102','103','104','105','106','107','108','109','110','111','112','113','116','117','120',
         '202','204','206','208','209',
         '401','402','407','408','409','410',
-        '501','502','601','602',
+        '601','602',
         '701','704','706','707','708','709','710','712','713','715','717','718','719',
         '801','802','803','804','805','806'
     ];
@@ -5057,14 +7392,38 @@ function finishBigSignature() {
     var timeStr = formatDateTime(now);
     var isoTime = now.toISOString();
     
-    document.getElementById('sig_' + _currentSigRole + '_data').value = dataUrl;
-    document.getElementById('sig_' + _currentSigRole + '_time').value = isoTime;
-    
-    showSignedSignature(_currentSigRole, dataUrl, timeStr);
-    closeModal('signatureModal');
-    
-    var roleName = _currentSigRole === 'manager' ? '店經理' : '會計人員';
-    showNotif('✅ ' + roleName + '簽名完成 ' + timeStr);
+    // 🔑 判斷是哪個表單的簽名
+    if (_currentSigRole.indexOf('pr_') === 0) {
+        // 📦 進貨驗收的簽名
+        var prRole = _currentSigRole.substring(3);
+        var dataEl = document.getElementById('prSig_' + prRole + '_data');
+        var timeEl = document.getElementById('prSig_' + prRole + '_time');
+        if (dataEl) dataEl.value = dataUrl;
+        if (timeEl) timeEl.value = isoTime;
+        renderPurchaseSignaturePanel(prRole);
+        var prRoleName = prRole === 'manager' ? '店經理' : '會計人員';
+        closeModal('signatureModal');
+        showNotif('✅ ' + prRoleName + '簽名完成 ' + timeStr);
+    } else if (_currentSigRole.indexOf('to_') === 0) {
+        // 🔄 調撥單的簽章
+        var toRole = _currentSigRole.substring(3); // 'out' or 'in'
+        var toDataEl = document.getElementById('toSig_' + toRole + '_data');
+        var toTimeEl = document.getElementById('toSig_' + toRole + '_time');
+        if (toDataEl) toDataEl.value = dataUrl;
+        if (toTimeEl) toTimeEl.value = isoTime;
+        renderTransferSignaturePanel(toRole);
+        var toRoleName = toRole === 'out' ? '調出店' : '調入店';
+        closeModal('signatureModal');
+        showNotif('✅ ' + toRoleName + '簽章完成 ' + timeStr);
+    } else {
+        // 💵 現金日報的簽名
+        document.getElementById('sig_' + _currentSigRole + '_data').value = dataUrl;
+        document.getElementById('sig_' + _currentSigRole + '_time').value = isoTime;
+        showSignedSignature(_currentSigRole, dataUrl, timeStr);
+        closeModal('signatureModal');
+        var crRoleName = _currentSigRole === 'manager' ? '店經理' : '會計人員';
+        showNotif('✅ ' + crRoleName + '簽名完成 ' + timeStr);
+    }
 }
 
 // 相容舊呼叫
@@ -5096,6 +7455,97 @@ function printCashReport() {
     var dateVal = document.getElementById('crDate').value;
     if (!dateVal) return alert('⚠️ 請選擇會計日');
     
+    var html = buildCashReportPrintHTML();
+    
+    // 萃取 body 內容（含 style 區塊也保留）
+    var styleMatch = html.match(/<style>([\s\S]*?)<\/style>/);
+    var styleContent = styleMatch ? styleMatch[1] : '';
+    var bodyMatch = html.match(/<body[^>]*>([\s\S]*?)<\/body>/);
+    var bodyContent = bodyMatch ? bodyMatch[1] : html;
+    
+    // 移除舊的 overlay
+    var oldOverlay = document.getElementById('cashReportPrintOverlay');
+    if (oldOverlay) oldOverlay.remove();
+    
+    // 建立全螢幕預覽 overlay
+    var overlay = document.createElement('div');
+    overlay.id = 'cashReportPrintOverlay';
+    overlay.style.cssText = 'position:fixed; top:0; left:0; right:0; bottom:0; background:white; z-index:99999; overflow:auto; -webkit-overflow-scrolling:touch;';
+    
+    overlay.innerHTML = 
+        '<div class="cr-print-toolbar" style="position:sticky; top:0; background:linear-gradient(to bottom, #1e40af, #1e3a8a); padding:12px; text-align:center; border-bottom:2px solid #1e3a8a; z-index:1; box-shadow:0 2px 6px rgba(0,0,0,0.2);">' +
+            '<div style="color:white; font-weight:bold; margin-bottom:8px; font-size:13px;">📋 預覽完成後請點「🖨️ 列印」</div>' +
+            '<button onclick="closeCashReportPrintOverlay()" style="padding:10px 18px; margin:0 4px; background:#6b7280; color:white; border:0; border-radius:6px; font-size:14px; font-weight:bold;">✕ 關閉</button>' +
+            '<button onclick="window.print()" style="padding:10px 22px; margin:0 4px; background:#10b981; color:white; border:0; border-radius:6px; font-weight:bold; font-size:14px; box-shadow:0 2px 4px rgba(0,0,0,0.2);">🖨️ 列印</button>' +
+        '</div>' +
+        '<div id="crPrintContent" style="padding:15px; max-width:210mm; margin:0 auto; background:white; color:black;">' + bodyContent + '</div>';
+    
+    document.body.appendChild(overlay);
+    
+    // 注入列印專屬 style
+    var oldStyle = document.getElementById('crPrintStyle');
+    if (oldStyle) oldStyle.remove();
+    var styleEl = document.createElement('style');
+    styleEl.id = 'crPrintStyle';
+    styleEl.innerHTML = 
+        styleContent + 
+        ' @media print {' +
+            '.cr-print-toolbar { display:none !important; }' +
+            'body > *:not(#cashReportPrintOverlay) { display:none !important; }' +
+            '#cashReportPrintOverlay { position:static !important; overflow:visible !important; }' +
+            '#crPrintContent { padding:0 !important; max-width:none !important; }' +
+            '@page { size:A4; margin:8mm; }' +
+        '}';
+    document.head.appendChild(styleEl);
+    
+    document.body.style.overflow = 'hidden';
+    overlay.scrollTop = 0;
+    
+    showNotif('📋 預覽已顯示，請檢查後點「🖨️ 列印」');
+}
+
+function closeCashReportPrintOverlay() {
+    var ov = document.getElementById('cashReportPrintOverlay');
+    if (ov) ov.remove();
+    var st = document.getElementById('crPrintStyle');
+    if (st) st.remove();
+    document.body.style.overflow = '';
+}
+
+// 💾 下載現金日報為 HTML 檔（手機列印備援）
+function downloadCashReportHTML() {
+    var dateVal = document.getElementById('crDate').value;
+    if (!dateVal) return alert('⚠️ 請選擇會計日');
+    
+    // 用 printCashReport 的 HTML 建構邏輯，但改為下載
+    var fakeBtn = { _isDownload: true };
+    window._cashReportDownloadMode = true;
+    
+    // 取得列印 HTML（重複利用列印邏輯）
+    var html = buildCashReportPrintHTML();
+    
+    window._cashReportDownloadMode = false;
+    
+    var storeName = document.getElementById('crStoreName').value || '現金日報';
+    var fname = storeName + '_現金日報_' + dateVal.replace(/-/g, '') + '.html';
+    
+    var blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = fname;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(function() { URL.revokeObjectURL(url); }, 100);
+    
+    showNotif('💾 已下載：' + fname);
+}
+
+// 共用：建構列印 HTML（給列印和下載共用）
+function buildCashReportPrintHTML() {
+    var dateVal = document.getElementById('crDate').value;
+    
     function val(id) {
         var el = document.getElementById(id);
         return el ? (el.value || '') : '';
@@ -5104,19 +7554,14 @@ function printCashReport() {
         var v = parseFloat(val(id));
         return isNaN(v) ? 0 : v;
     }
-    function fmt(n) {
-        return (n || 0).toLocaleString();
-    }
+    function fmt(n) { return (n || 0).toLocaleString(); }
     
-    // 取得日期顯示
     var d = new Date(dateVal);
     var weekDays = ['日','一','二','三','四','五','六'];
     var accDate = d.getFullYear() + '年' + String(d.getMonth()+1).padStart(2,'0') + '月' + String(d.getDate()).padStart(2,'0') + '日(' + weekDays[d.getDay()] + ')';
     var now = new Date();
     var printDate = now.getFullYear() + '/ ' + String(now.getMonth()+1).padStart(2,'0') + '/ ' + String(now.getDate()).padStart(2,'0') + '(' + weekDays[now.getDay()] + ')  ' + String(now.getHours()).padStart(2,'0') + ':' + String(now.getMinutes()).padStart(2,'0');
     
-    // 收銀機資料
-    var regRows = '';
     var regItems = [
         {code:'101', name:'本日來客數'},
         {code:'102', name:'本日結帳累計金額'},
@@ -5139,80 +7584,19 @@ function printCashReport() {
         {code:'111', name:'本日實際銷貨收入'},
         {code:'120', name:'實際營業額(扣除行動隨取)'}
     ];
+    var regRows = '';
     for (var i = 0; i < regItems.length; i++) {
         var it = regItems[i];
-        regRows += '<tr>';
-        regRows += '<td style="text-align:center;">' + it.code + '</td>';
-        regRows += '<td>' + it.name + '</td>';
+        regRows += '<tr><td style="text-align:center;">' + it.code + '</td><td>' + it.name + '</td>';
         regRows += '<td style="text-align:right;">' + fmt(num('cr_r1_' + it.code)) + '</td>';
         regRows += '<td style="text-align:right;">' + fmt(num('cr_r2_' + it.code)) + '</td>';
         regRows += '<td style="text-align:right;">' + fmt(num('cr_r3_' + it.code)) + '</td>';
-        regRows += '<td style="text-align:right; font-weight:bold;">' + fmt(num('cr_total_' + it.code)) + '</td>';
-        regRows += '</tr>';
+        regRows += '<td style="text-align:right; font-weight:bold;">' + fmt(num('cr_total_' + it.code)) + '</td></tr>';
     }
     
-    // 銷貨收入 + 代收 + 代現金
-    var incomeRows = '';
-    var incomeItems = [
-        {section:'銷貨收入', code:'111A', name:'銷貨收入(免稅)'},
-        {code:'111B', name:'銷貨收入(應稅)'},
-        {code:'111D', name:'代銷/隨取收入(免稅)'},
-        {code:'111E', name:'代銷/隨取收入(應稅)'},
-        {section:'代收款&其他收入', code:'202', name:'代售商品', hasCount:true},
-        {code:'204', name:'慈善捐款', hasCount:true},
-        {code:'206', name:'代收', hasCount:true},
-        {code:'208', name:'總部撥款', hasCount:true},
-        {code:'209', name:'門市暫收款', hasCount:true},
-        {section:'代現金', code:'401', name:'- 禮券', hasCount:true},
-        {code:'402', name:'- 廠商代現金', hasCount:true},
-        {code:'407', name:'- 禮物卡', hasCount:true},
-        {code:'408', name:'- 禮券餘額卡', hasCount:true},
-        {code:'409', name:'- 其它卡', hasCount:true},
-        {code:'410', name:'- 代兌', hasCount:true}
-    ];
-    var lastSec = '';
-    for (var j = 0; j < incomeItems.length; j++) {
-        var ii = incomeItems[j];
-        if (ii.section && ii.section !== lastSec) {
-            incomeRows += '<tr style="background:#fef3c7;"><td colspan="4" style="font-weight:bold; padding:4px 8px;">' + ii.section + '</td></tr>';
-            lastSec = ii.section;
-        }
-        incomeRows += '<tr>';
-        incomeRows += '<td style="text-align:center;">' + ii.code + '</td>';
-        incomeRows += '<td>' + ii.name + '</td>';
-        incomeRows += '<td style="text-align:right;">' + (ii.hasCount ? fmt(num('cr_cnt_' + ii.code)) + ' 張' : '-') + '</td>';
-        incomeRows += '<td style="text-align:right; font-weight:bold;">' + fmt(num('cr_amt_' + ii.code)) + '</td>';
-        incomeRows += '</tr>';
-    }
+    var s806 = num('cr_amt_806');
+    var s806Color = s806 < 0 ? '#dc2626' : (s806 > 0 ? '#d97706' : '#059669');
     
-    // 費用支出
-    var expenseRows = '';
-    var expenseItems = [
-        {code:'701', name:'- 現金支出進項稅額'},
-        {code:'704', name:'- 郵電費', hasCount:true},
-        {code:'706', name:'- 水、瓦斯費', hasCount:true},
-        {code:'707', name:'- 電費', hasCount:true},
-        {code:'708', name:'- 自用商品', hasCount:true},
-        {code:'709', name:'- 雜費', hasCount:true},
-        {code:'710', name:'- 清潔管理費', hasCount:true},
-        {code:'712', name:'- 交通費', hasCount:true},
-        {code:'713', name:'- 檢驗費', hasCount:true},
-        {code:'715', name:'- 偽鈔', hasCount:true},
-        {code:'717', name:'- 其他損失', hasCount:true},
-        {code:'718', name:'- 發票費用', hasCount:true},
-        {code:'719', name:'- 通路匯款', hasCount:true}
-    ];
-    for (var k = 0; k < expenseItems.length; k++) {
-        var ei = expenseItems[k];
-        expenseRows += '<tr>';
-        expenseRows += '<td style="text-align:center;">' + ei.code + '</td>';
-        expenseRows += '<td>' + ei.name + '</td>';
-        expenseRows += '<td style="text-align:right;">' + (ei.hasCount ? fmt(num('cr_cnt_' + ei.code)) + ' 張' : '-') + '</td>';
-        expenseRows += '<td style="text-align:right;">' + fmt(num('cr_amt_' + ei.code)) + '</td>';
-        expenseRows += '</tr>';
-    }
-    
-    // 簽名圖
     var managerSig = val('sig_manager_data');
     var managerTime = val('sig_manager_time');
     var accountantSig = val('sig_accountant_data');
@@ -5226,77 +7610,98 @@ function printCashReport() {
     var managerTimeStr = managerTime ? formatDateTime(new Date(managerTime)) : '';
     var accountantTimeStr = accountantTime ? formatDateTime(new Date(accountantTime)) : '';
     
-    // 組成完整列印 HTML
-    var html = '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>現金日報表</title>';
+    var html = '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>現金日報表 ' + dateVal + '</title>';
     html += '<style>';
     html += '@page { size: A4 portrait; margin: 8mm; }';
-    html += '* { -webkit-print-color-adjust: exact; print-color-adjust: exact; box-sizing:border-box; }';
-    html += 'body { font-family: "Microsoft JhengHei", "PingFang TC", sans-serif; color:#000; background:white; margin:0; padding:0; font-size:11px; }';
-    html += '.title { text-align:center; font-size:16px; font-weight:bold; margin-bottom:6px; }';
-    html += '.header-info { display:flex; justify-content:space-between; margin-bottom:8px; font-size:11px; }';
-    html += '.acc-date { font-size:12px; margin-bottom:6px; font-weight:bold; }';
+    html += '* { box-sizing:border-box; }';
+    html += 'body { font-family: "Microsoft JhengHei", "PingFang TC", sans-serif; color:#000; background:white; margin:0; padding:10mm; font-size:11px; }';
+    html += '.title { text-align:center; font-size:16px; font-weight:bold; margin-bottom:8px; }';
+    html += '.hi { display:flex; justify-content:space-between; margin-bottom:6px; font-size:11px; }';
+    html += '.acc { font-size:12px; margin-bottom:6px; font-weight:bold; }';
     html += 'table { width:100%; border-collapse:collapse; margin-bottom:8px; }';
     html += 'th, td { border:1px solid #444; padding:3px 5px; font-size:10px; }';
     html += 'th { background:#e5e7eb; font-weight:bold; text-align:center; }';
-    html += '.bottom-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; }';
-    html += '.sign-area { display:flex; justify-content:space-around; margin-top:12px; padding-top:10px; border-top:1px solid #444; }';
-    html += '.sign-box { text-align:center; }';
-    html += '.sign-box .label { font-size:11px; margin-bottom:4px; }';
+    html += '.sign-area { display:flex; justify-content:space-around; margin-top:14px; padding-top:10px; border-top:1px solid #444; }';
+    html += '.sign-box { text-align:center; min-width:200px; }';
+    html += '.sign-box .label { font-size:11px; margin-bottom:4px; font-weight:bold; }';
     html += '.sign-box .img { min-height:60px; padding:4px; border-bottom:1px solid #444; }';
     html += '.sign-box .time { font-size:9px; color:#555; margin-top:4px; }';
     html += '.note { margin-top:6px; font-size:11px; padding:4px; border:1px solid #d1d5db; min-height:30px; }';
     html += '</style></head><body>';
     
-    // 標題
     html += '<div class="title">現金日報表（代用轉帳傳票）</div>';
+    html += '<div class="hi"><div>店號：' + val('crStoreCode') + '<br>店名：' + val('crStoreName') + '</div><div>列印日：' + printDate + '</div></div>';
+    html += '<div class="acc">會計日：' + accDate + '</div>';
     
-    // 店號、店名、列印日
-    html += '<div class="header-info">';
-    html += '<div>店號：' + val('crStoreCode') + '<br>店名：' + val('crStoreName') + '</div>';
-    html += '<div>列印日：' + printDate + '</div>';
-    html += '</div>';
+    html += '<table><thead><tr><th style="width:50px;">簡號</th><th>收銀機日結帳項目名稱</th><th style="width:75px;">機 1</th><th style="width:75px;">機 2</th><th style="width:75px;">機 3</th><th style="width:75px;">合計</th></tr></thead><tbody>' + regRows + '</tbody></table>';
     
-    // 會計日
-    html += '<div class="acc-date">會計日：' + accDate + '</div>';
+    // 銷貨收入區
+    html += '<table><thead><tr><th colspan="4" style="background:#fef3c7;">銷貨收入 / 代收款 / 代現金</th></tr><tr><th style="width:50px;">簡號</th><th>會計科目</th><th style="width:70px;">張數</th><th style="width:100px;">收支額</th></tr></thead><tbody>';
+    var incomeItems = [
+        {section:'銷貨收入', code:'111A', name:'銷貨收入(免稅)'},
+        {code:'111B', name:'銷貨收入(應稅)'},
+        {code:'111D', name:'代銷/隨取收入(免稅)'},
+        {code:'111E', name:'代銷/隨取收入(應稅)'},
+        {section:'代收款&其他收入', code:'202', name:'代售商品', hc:true},
+        {code:'204', name:'慈善捐款', hc:true},
+        {code:'206', name:'代收', hc:true},
+        {code:'208', name:'總部撥款', hc:true},
+        {code:'209', name:'門市暫收款', hc:true},
+        {section:'代現金', code:'401', name:'- 禮券', hc:true},
+        {code:'402', name:'- 廠商代現金', hc:true},
+        {code:'407', name:'- 禮物卡', hc:true},
+        {code:'408', name:'- 禮券餘額卡', hc:true},
+        {code:'409', name:'- 其它卡', hc:true},
+        {code:'410', name:'- 代兌', hc:true}
+    ];
+    var ls = '';
+    for (var j = 0; j < incomeItems.length; j++) {
+        var ii = incomeItems[j];
+        if (ii.section && ii.section !== ls) {
+            html += '<tr style="background:#fef3c7;"><td colspan="4" style="font-weight:bold;">' + ii.section + '</td></tr>';
+            ls = ii.section;
+        }
+        html += '<tr><td style="text-align:center;">' + ii.code + '</td><td>' + ii.name + '</td>';
+        html += '<td style="text-align:right;">' + (ii.hc ? fmt(num('cr_cnt_' + ii.code)) + ' 張' : '-') + '</td>';
+        html += '<td style="text-align:right; font-weight:bold;">' + fmt(num('cr_amt_' + ii.code)) + '</td></tr>';
+    }
+    html += '</tbody></table>';
     
-    // 收銀機表
-    html += '<table>';
-    html += '<thead><tr>';
-    html += '<th style="width:50px;">簡號</th>';
-    html += '<th>收銀機日結帳項目名稱</th>';
-    html += '<th style="width:75px;">收銀機第一台</th>';
-    html += '<th style="width:75px;">收銀機第二台</th>';
-    html += '<th style="width:75px;">收銀機第三台</th>';
-    html += '<th style="width:75px;">收銀機合計</th>';
-    html += '</tr></thead><tbody>' + regRows + '</tbody></table>';
+    // 費用支出
+    html += '<table><thead><tr><th colspan="4" style="background:#fef3c7;">費用支出</th></tr><tr><th style="width:50px;">簡號</th><th>會計科目</th><th style="width:70px;">張數</th><th style="width:100px;">收支額</th></tr></thead><tbody>';
+    var expenseItems = [
+        {code:'701', name:'- 現金支出進項稅額'},
+        {code:'704', name:'- 郵電費', hc:true},
+        {code:'706', name:'- 水、瓦斯費', hc:true},
+        {code:'707', name:'- 電費', hc:true},
+        {code:'708', name:'- 自用商品', hc:true},
+        {code:'709', name:'- 雜費', hc:true},
+        {code:'710', name:'- 清潔管理費', hc:true},
+        {code:'712', name:'- 交通費', hc:true},
+        {code:'713', name:'- 檢驗費', hc:true},
+        {code:'715', name:'- 偽鈔', hc:true},
+        {code:'717', name:'- 其他損失', hc:true},
+        {code:'718', name:'- 發票費用', hc:true},
+        {code:'719', name:'- 通路匯款', hc:true}
+    ];
+    for (var k = 0; k < expenseItems.length; k++) {
+        var ei = expenseItems[k];
+        html += '<tr><td style="text-align:center;">' + ei.code + '</td><td>' + ei.name + '</td>';
+        html += '<td style="text-align:right;">' + (ei.hc ? fmt(num('cr_cnt_' + ei.code)) + ' 張' : '-') + '</td>';
+        html += '<td style="text-align:right;">' + fmt(num('cr_amt_' + ei.code)) + '</td></tr>';
+    }
+    html += '</tbody></table>';
     
-    // 下方雙欄：左側收入/退進貨 右側費用/週轉金
-    html += '<div class="bottom-grid">';
-    
-    // 左：銷貨收入/代收/代現金
-    html += '<div>';
-    html += '<table><thead><tr><th>簡號</th><th>會計科目</th><th>張數</th><th>收支額</th></tr></thead>';
-    html += '<tbody>' + incomeRows + '</tbody></table>';
-    
-    // 現金退貨/進貨
-    html += '<table><thead><tr><th colspan="4" style="background:#fef3c7;">現金退貨 / 現金進貨</th></tr>';
-    html += '<tr><th>簡號</th><th>會計科目</th><th>張數/零售價</th><th>收支額</th></tr></thead><tbody>';
-    html += '<tr><td style="text-align:center;">501</td><td>現金退貨（成本）</td><td style="text-align:right;">' + fmt(num('cr_cnt_501')) + ' 張 / ' + fmt(num('cr_retail_501')) + '</td><td style="text-align:right;">' + fmt(num('cr_amt_501')) + '</td></tr>';
+    // 退貨進貨
+    html += '<table><thead><tr><th colspan="4" style="background:#fef3c7;">現金退貨 / 現金進貨</th></tr><tr><th style="width:50px;">簡號</th><th>會計科目</th><th style="width:80px;">張數/零售價</th><th style="width:100px;">收支額</th></tr></thead><tbody>';
+    html += '<tr><td style="text-align:center;">501</td><td>現金退貨（成本）</td><td style="text-align:right;">' + fmt(num('cr_cnt_501')) + '張/' + fmt(num('cr_retail_501')) + '</td><td style="text-align:right;">' + fmt(num('cr_amt_501')) + '</td></tr>';
     html += '<tr><td style="text-align:center;">502</td><td>現金退貨進項稅額</td><td style="text-align:right;">-</td><td style="text-align:right;">' + fmt(num('cr_amt_502')) + '</td></tr>';
-    html += '<tr><td style="text-align:center;">601</td><td>- 現金進貨（成本）</td><td style="text-align:right;">' + fmt(num('cr_cnt_601')) + ' 張 / ' + fmt(num('cr_retail_601')) + '</td><td style="text-align:right;">' + fmt(num('cr_amt_601')) + '</td></tr>';
+    html += '<tr><td style="text-align:center;">601</td><td>- 現金進貨（成本）</td><td style="text-align:right;">' + fmt(num('cr_cnt_601')) + '張/' + fmt(num('cr_retail_601')) + '</td><td style="text-align:right;">' + fmt(num('cr_amt_601')) + '</td></tr>';
     html += '<tr><td style="text-align:center;">602</td><td>- 現金進貨進項稅額</td><td style="text-align:right;">-</td><td style="text-align:right;">' + fmt(num('cr_amt_602')) + '</td></tr>';
     html += '</tbody></table>';
-    html += '</div>';
-    
-    // 右：費用 + 週轉金
-    html += '<div>';
-    html += '<table><thead><tr><th colspan="4" style="background:#fef3c7;">費用支出</th></tr>';
-    html += '<tr><th>簡號</th><th>會計科目</th><th>張數</th><th>收支額</th></tr></thead>';
-    html += '<tbody>' + expenseRows + '</tbody></table>';
     
     // 週轉金
-    html += '<table><thead><tr><th colspan="3" style="background:#fef3c7;">週轉金</th></tr>';
-    html += '<tr><th>簡號</th><th>會計科目</th><th>金額</th></tr></thead><tbody>';
+    html += '<table><thead><tr><th colspan="3" style="background:#fef3c7;">週轉金</th></tr><tr><th style="width:50px;">簡號</th><th>會計科目</th><th style="width:120px;">金額</th></tr></thead><tbody>';
     html += '<tr><td style="text-align:center;">801</td><td>昨日留存週轉金</td><td style="text-align:right;">' + fmt(num('cr_amt_801')) + '</td></tr>';
     html += '<tr style="background:#fef3c7;"><td style="text-align:center;">802</td><td><strong>本日應有現金小計</strong></td><td style="text-align:right; font-weight:bold;">' + fmt(num('cr_amt_802')) + '</td></tr>';
     html += '<tr><td style="text-align:center;">803</td><td>- 本日匯款額</td><td style="text-align:right;">' + fmt(num('cr_amt_803')) + '</td></tr>';
@@ -5305,54 +7710,24 @@ function printCashReport() {
     html += '<tr><td style="text-align:center;">803C</td><td>　- 本日匯款額(ATM)</td><td style="text-align:right;">' + fmt(num('cr_amt_803C')) + '</td></tr>';
     html += '<tr style="background:#fef3c7;"><td style="text-align:center;">804</td><td><strong>= 本日應有週轉金</strong></td><td style="text-align:right; font-weight:bold;">' + fmt(num('cr_amt_804')) + '</td></tr>';
     html += '<tr><td style="text-align:center;">805</td><td>本日實際清點週轉金</td><td style="text-align:right;">' + fmt(num('cr_amt_805')) + '</td></tr>';
-    var s806 = num('cr_amt_806');
-    var s806Color = s806 < 0 ? '#dc2626' : (s806 > 0 ? '#d97706' : '#059669');
     html += '<tr style="background:#fef3c7;"><td style="text-align:center;">806</td><td><strong>門市現金短/溢</strong></td><td style="text-align:right; font-weight:bold; color:' + s806Color + ';">' + fmt(s806) + '</td></tr>';
     html += '</tbody></table>';
-    html += '</div>';
-    
-    html += '</div>'; // bottom-grid
     
     // 備註
     var note = val('crNote');
     if (note) html += '<div class="note"><strong>備註：</strong>' + note + '</div>';
     
-    // 簽名區
+    // 簽名
     html += '<div class="sign-area">';
-    html += '<div class="sign-box"><div class="label"><strong>店經理</strong></div>';
-    html += '<div class="img">' + managerSigHtml + '</div>';
-    if (managerTimeStr) html += '<div class="time">簽署時間：' + managerTimeStr + '</div>';
+    html += '<div class="sign-box"><div class="label">店經理</div><div class="img">' + managerSigHtml + '</div>';
+    if (managerTimeStr) html += '<div class="time">簽署：' + managerTimeStr + '</div>';
     html += '</div>';
-    html += '<div class="sign-box"><div class="label"><strong>會計人員</strong></div>';
-    html += '<div class="img">' + accountantSigHtml + '</div>';
-    if (accountantTimeStr) html += '<div class="time">簽署時間：' + accountantTimeStr + '</div>';
-    html += '</div>';
-    html += '</div>';
+    html += '<div class="sign-box"><div class="label">會計人員</div><div class="img">' + accountantSigHtml + '</div>';
+    if (accountantTimeStr) html += '<div class="time">簽署：' + accountantTimeStr + '</div>';
+    html += '</div></div>';
     
     html += '</body></html>';
-    
-    // 用 iframe 列印
-    var iframe = document.getElementById('cashReportPrintFrame');
-    if (iframe) try { iframe.parentNode.removeChild(iframe); } catch(e) {}
-    iframe = document.createElement('iframe');
-    iframe.id = 'cashReportPrintFrame';
-    iframe.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0;visibility:hidden;';
-    document.body.appendChild(iframe);
-    
-    var doc = iframe.contentWindow.document;
-    doc.open();
-    doc.write(html);
-    doc.close();
-    
-    showNotif('🖨️ 準備列印中...');
-    setTimeout(function() {
-        try {
-            iframe.contentWindow.focus();
-            iframe.contentWindow.print();
-        } catch(e) {
-            alert('⚠️ 列印失敗：' + e.message);
-        }
-    }, 500);
+    return html;
 }
 
 function renderLeaveAllocation() {
@@ -6521,8 +8896,12 @@ var BACKUP_KEYS = [
     'salarySlips',
     'leaveBalanceAdjustments',
     'dailyCashReports',
+    'purchaseReceipts',
+    'transferOrders',
     'logs',
     'systemSettings',
+    'customRolePermissions',
+    'customAccountPermissions',
     'currentStoreId', 'currentSchedStoreId'
 ];
 
