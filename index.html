@@ -2842,8 +2842,45 @@ body { font-family: "Microsoft JhengHei", "微軟正黑體", -apple-system, sans
             </div>
             <div class="panel-body">
                 <div class="alert-box info" style="margin-bottom:16px;">
-                    💡 <strong>線上同步</strong>讓多台設備（手機、平板、電腦）共享同一份資料：店長手機改班表，店員平板立即看到；門市間調撥單即時同步。<br>
-                    🔒 採用免費的 <strong>Pantry 雲端服務</strong>（getpantry.cloud），無需信用卡。
+                    💡 <strong>線上同步</strong>讓多台設備（手機、平板、電腦）共享同一份資料：店長手機改班表，店員平板立即看到；門市間調撥單即時同步。
+                </div>
+                
+                <!-- 🚀 簡易模式（推薦）-->
+                <div style="background:linear-gradient(135deg,#dbeafe,#bfdbfe); padding:16px; border-radius:10px; margin-bottom:16px; border:3px solid #3b82f6;">
+                    <h3 style="margin:0 0 10px 0; color:#1e3a8a; display:flex; align-items:center; gap:6px;">
+                        🚀 簡易模式 <span style="background:#10b981; color:white; font-size:11px; padding:2px 8px; border-radius:10px;">推薦</span>
+                    </h3>
+                    <div style="background:white; padding:10px 12px; border-radius:6px; font-size:13px; margin-bottom:10px;">
+                        ✅ <strong>完全不用註冊</strong>，無需電子郵件、無需密碼<br>
+                        ✅ <strong>一鍵建立</strong>，立即可用，1 秒生成同步代碼<br>
+                        ✅ <strong>輸入 6 碼</strong>即可在其他裝置連接（或掃 QR 碼）<br>
+                        ⚠️ 公共空間，請勿存放高度機密資料
+                    </div>
+                    
+                    <div id="ezSyncSetup" style="display:flex; gap:8px; flex-wrap:wrap;">
+                        <button class="btn-confirm" style="padding:12px 22px; font-size:15px; font-weight:bold; flex:1; min-width:180px;" onclick="ezCreateSyncSpace()">🆕 建立同步空間</button>
+                        <button class="btn-primary" style="padding:12px 22px; font-size:15px; font-weight:bold; flex:1; min-width:180px; background:linear-gradient(to bottom,#f59e0b,#d97706);" onclick="ezPromptConnect()">📥 連接已有空間</button>
+                    </div>
+                    
+                    <div id="ezSyncActive" style="display:none;">
+                        <div style="background:white; padding:14px; border-radius:8px; margin-bottom:10px;">
+                            <div style="font-size:12px; color:#6b7280; margin-bottom:4px;">📋 您的同步代碼（給其他裝置輸入）：</div>
+                            <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+                                <code id="ezSyncCode" style="background:#fef3c7; padding:10px 18px; border-radius:6px; font-size:22px; font-weight:bold; font-family:monospace; flex:1; min-width:200px; text-align:center; letter-spacing:2px; color:#78350f;">-</code>
+                                <button onclick="ezCopyCode()" style="padding:10px 16px; background:#3b82f6; color:white; border:0; border-radius:4px; cursor:pointer; font-size:13px; font-weight:bold;">📋 複製</button>
+                                <button onclick="ezShowQR()" style="padding:10px 16px; background:#8b5cf6; color:white; border:0; border-radius:4px; cursor:pointer; font-size:13px; font-weight:bold;">📱 QR 碼</button>
+                            </div>
+                            <div id="ezQrWrap" style="display:none; text-align:center; margin-top:10px; padding:14px; background:#f9fafb; border-radius:6px;">
+                                <img id="ezQrImg" style="max-width:200px;">
+                                <div style="font-size:12px; color:#6b7280; margin-top:6px;">用另一台手機掃描 QR 碼即可連接</div>
+                            </div>
+                        </div>
+                        <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                            <button onclick="manualPushToCloud()" style="padding:8px 14px; background:#3b82f6; color:white; border:0; border-radius:4px; cursor:pointer; font-size:13px;">📤 立即推送</button>
+                            <button onclick="manualPullFromCloud()" style="padding:8px 14px; background:#10b981; color:white; border:0; border-radius:4px; cursor:pointer; font-size:13px;">📥 立即拉取</button>
+                            <button onclick="ezDisconnect()" style="padding:8px 14px; background:#ef4444; color:white; border:0; border-radius:4px; cursor:pointer; font-size:13px;">❌ 中斷同步</button>
+                        </div>
+                    </div>
                 </div>
                 
                 <!-- 狀態卡片 -->
@@ -2866,9 +2903,12 @@ body { font-family: "Microsoft JhengHei", "微軟正黑體", -apple-system, sans
                     </div>
                 </div>
                 
-                <!-- 設定區 -->
-                <div style="background:#fef3c7; padding:16px; border-radius:8px; margin-bottom:16px; border:2px dashed #d97706;">
-                    <h4 style="margin:0 0 10px 0; color:#78350f;">⚙️ 設定 Pantry 同步金鑰</h4>
+                <!-- 進階模式（Pantry）-->
+                <details style="background:#f9fafb; padding:14px; border-radius:8px; margin-bottom:16px;">
+                    <summary style="cursor:pointer; font-weight:bold; color:#374151; font-size:14px;">⚙️ 進階模式：使用 Pantry 私人空間（需註冊）</summary>
+                    <div style="margin-top:12px;">
+                        <div style="background:#fef3c7; padding:14px; border-radius:8px; border:1px dashed #d97706;">
+                            <h4 style="margin:0 0 10px 0; color:#78350f;">🔐 設定 Pantry 同步金鑰</h4>
                     
                     <div style="background:white; padding:12px; border-radius:6px; margin-bottom:10px; font-size:13px; line-height:1.7;">
                         <strong>📚 首次設定步驟（一次性，約 1 分鐘）：</strong><br>
@@ -2885,22 +2925,14 @@ body { font-family: "Microsoft JhengHei", "微軟正黑體", -apple-system, sans
                     </div>
                     
                     <div style="display:flex; gap:8px; flex-wrap:wrap;">
-                        <button class="btn-confirm" style="padding:8px 18px; font-size:13px;" onclick="enableCloudSync()">✅ 啟用同步</button>
+                        <button class="btn-confirm" style="padding:8px 18px; font-size:13px;" onclick="enableCloudSync()">✅ 啟用 Pantry 同步</button>
                         <button class="btn-secondary" style="padding:8px 18px; font-size:13px;" onclick="testCloudSync()">🧪 測試連線</button>
-                        <button class="btn-danger" style="padding:8px 18px; font-size:13px;" onclick="disableCloudSync()">❌ 停用同步</button>
+                        <button class="btn-danger" style="padding:8px 18px; font-size:13px;" onclick="disableCloudSync()">❌ 停用 Pantry</button>
+                        <button class="btn-primary" style="padding:8px 14px; font-size:12px; background:linear-gradient(to bottom,#8b5cf6,#7c3aed);" onclick="generatePantryGuide()">🆕 我沒帳號</button>
                     </div>
-                </div>
-                
-                <!-- 操作區 -->
-                <div style="background:#dbeafe; padding:16px; border-radius:8px; margin-bottom:16px;">
-                    <h4 style="margin:0 0 10px 0; color:#1e3a8a;">☁️ 雲端操作</h4>
-                    <div style="display:flex; gap:8px; flex-wrap:wrap;">
-                        <button class="btn-primary" style="padding:10px 18px; font-size:13px; background:linear-gradient(to bottom,#3b82f6,#1d4ed8);" onclick="manualPushToCloud()">📤 立即推送到雲端</button>
-                        <button class="btn-primary" style="padding:10px 18px; font-size:13px; background:linear-gradient(to bottom,#10b981,#059669);" onclick="manualPullFromCloud()">📥 立即從雲端拉取</button>
-                        <button class="btn-primary" style="padding:10px 18px; font-size:13px; background:linear-gradient(to bottom,#8b5cf6,#7c3aed);" onclick="generatePantryGuide()">🆕 我沒帳號（產生 ID）</button>
-                        <button class="btn-danger" style="padding:10px 18px; font-size:13px;" onclick="clearCloudData()">🗑️ 清除雲端資料</button>
+                        </div>
                     </div>
-                </div>
+                </details>
                 
                 <!-- 自動同步設定 -->
                 <div style="background:#f3f4f6; padding:14px; border-radius:8px;">
@@ -11747,6 +11779,228 @@ var BACKUP_KEYS = [
 // ============= 🌐 線上同步（Pantry Cloud） =============
 var PANTRY_BASE_URL = 'https://getpantry.cloud/apiv1/pantry';
 var PANTRY_BASKET_NAME = 'hr_system_data';
+
+// 🚀 簡易模式：使用 JSONBlob（無需註冊）
+var EZ_SYNC_URL = 'https://jsonblob.com/api/jsonBlob';
+var EZ_QR_API = 'https://api.qrserver.com/v1/create-qr-code/?size=300x300&margin=10&data=';
+
+// 取得目前簡易模式同步 ID（完整）
+function ezGetSyncId() {
+    return localStorage.getItem('_ez_syncId') || '';
+}
+
+function ezSetSyncId(id) {
+    if (id) {
+        localStorage.setItem('_ez_syncId', id);
+        localStorage.setItem('_cs_enabled', '1');
+        _syncEnabled = true;
+    } else {
+        localStorage.removeItem('_ez_syncId');
+        localStorage.setItem('_cs_enabled', '0');
+        _syncEnabled = false;
+    }
+}
+
+// 🆕 建立新的同步空間
+function ezCreateSyncSpace() {
+    if (!confirm('🆕 建立新的同步空間？\n\n• 系統會建立全新的雲端空間\n• 取得一組「同步代碼」\n• 其他裝置輸入此代碼即可同步\n\n要繼續嗎？')) return;
+    
+    showNotif('🚀 建立中...');
+    addSyncLog('建立新的同步空間...', 'info');
+    
+    // 收集本機所有資料當初始內容
+    var allData = { _created: Date.now(), _version: 1 };
+    for (var i = 0; i < BACKUP_KEYS.length; i++) {
+        var k = BACKUP_KEYS[i];
+        var v = localStorage.getItem(k);
+        if (v !== null) {
+            try { allData[k] = JSON.parse(v); } catch(e) { allData[k] = v; }
+        }
+    }
+    
+    fetch(EZ_SYNC_URL, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+        },
+        body: JSON.stringify(allData)
+    }).then(function(r) {
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        var loc = r.headers.get('Location') || r.headers.get('location') || '';
+        var id = loc.split('/').pop();
+        if (!id) throw new Error('未取得同步 ID');
+        return id;
+    }).then(function(id) {
+        ezSetSyncId(id);
+        addSyncLog('✅ 同步空間建立成功！代碼：' + id, 'success');
+        showNotif('🎉 同步空間建立完成！');
+        ezShowActivePanel();
+        startAutoPull();
+    }).catch(function(err) {
+        addSyncLog('❌ 建立失敗：' + err.message, 'error');
+        alert('❌ 建立失敗：' + err.message + '\n\n請檢查網路連線後再試。');
+    });
+}
+
+// 📥 連接已有的同步空間
+function ezPromptConnect() {
+    var code = prompt('📥 連接已有的同步空間\n\n請輸入完整同步代碼（從建立空間的裝置複製）：');
+    if (!code) return;
+    code = code.trim();
+    if (code.length < 4) return alert('⚠️ 代碼太短');
+    
+    showNotif('🔌 連接中...');
+    addSyncLog('嘗試連接同步空間：' + code, 'info');
+    
+    fetch(EZ_SYNC_URL + '/' + code).then(function(r) {
+        if (r.status === 404) {
+            throw new Error('找不到此代碼。請確認輸入「完整代碼」');
+        }
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        return r.json();
+    }).then(function(data) {
+        var dataKeyCount = Object.keys(data).filter(function(k){return BACKUP_KEYS.indexOf(k)>=0;}).length;
+        if (!confirm('✅ 連接成功！\n\n雲端有 ' + dataKeyCount + ' 項資料\n\n⚠️ 是否要立即下載並覆蓋本機資料？\n（按取消則保留本機資料，下次自動推送本機資料覆蓋雲端）')) {
+            ezSetSyncId(code);
+            addSyncLog('✅ 已連接（保留本機資料）', 'success');
+            ezShowActivePanel();
+            startAutoPull();
+            return;
+        }
+        
+        // 套用雲端資料
+        var count = 0;
+        for (var k = 0; k < BACKUP_KEYS.length; k++) {
+            var key = BACKUP_KEYS[k];
+            if (data[key] !== undefined && data[key] !== null) {
+                localStorage.setItem(key, typeof data[key] === 'string' ? data[key] : JSON.stringify(data[key]));
+                count++;
+            }
+        }
+        
+        ezSetSyncId(code);
+        addSyncLog('✅ 連接並下載 ' + count + ' 項', 'success');
+        ezShowActivePanel();
+        startAutoPull();
+        
+        alert('✅ 連接成功！已下載 ' + count + ' 項資料。\n\n建議重新整理頁面以套用變更。');
+    }).catch(function(err) {
+        addSyncLog('❌ 連接失敗：' + err.message, 'error');
+        alert('❌ 連接失敗：' + err.message);
+    });
+}
+
+// 顯示已啟用面板
+function ezShowActivePanel() {
+    var id = ezGetSyncId();
+    if (!id) return;
+    
+    var setupEl = document.getElementById('ezSyncSetup');
+    var activeEl = document.getElementById('ezSyncActive');
+    var codeEl = document.getElementById('ezSyncCode');
+    
+    if (setupEl) setupEl.style.display = 'none';
+    if (activeEl) activeEl.style.display = 'block';
+    if (codeEl) codeEl.textContent = id;
+    
+    updateSyncUI();
+}
+
+// 顯示未啟用面板
+function ezShowSetupPanel() {
+    var setupEl = document.getElementById('ezSyncSetup');
+    var activeEl = document.getElementById('ezSyncActive');
+    if (setupEl) setupEl.style.display = 'flex';
+    if (activeEl) activeEl.style.display = 'none';
+    
+    var qrWrap = document.getElementById('ezQrWrap');
+    if (qrWrap) qrWrap.style.display = 'none';
+    
+    updateSyncUI();
+}
+
+// 📋 複製代碼
+function ezCopyCode() {
+    var id = ezGetSyncId();
+    if (!id) return;
+    
+    if (navigator.clipboard) {
+        navigator.clipboard.writeText(id).then(function() {
+            showNotif('📋 已複製代碼');
+        }).catch(function() {
+            ezCopyFallback(id);
+        });
+    } else {
+        ezCopyFallback(id);
+    }
+}
+
+function ezCopyFallback(text) {
+    var ta = document.createElement('textarea');
+    ta.value = text;
+    ta.style.position = 'fixed';
+    ta.style.left = '-9999px';
+    document.body.appendChild(ta);
+    ta.select();
+    try {
+        document.execCommand('copy');
+        showNotif('📋 已複製代碼');
+    } catch(e) {
+        prompt('請手動複製：', text);
+    }
+    document.body.removeChild(ta);
+}
+
+// 📱 顯示 QR 碼
+function ezShowQR() {
+    var id = ezGetSyncId();
+    if (!id) return;
+    
+    var qrWrap = document.getElementById('ezQrWrap');
+    var qrImg = document.getElementById('ezQrImg');
+    if (!qrWrap || !qrImg) return;
+    
+    if (qrWrap.style.display === 'none') {
+        qrImg.src = EZ_QR_API + encodeURIComponent(id);
+        qrWrap.style.display = 'block';
+    } else {
+        qrWrap.style.display = 'none';
+    }
+}
+
+// ❌ 中斷同步
+function ezDisconnect() {
+    if (!confirm('❌ 中斷同步？\n\n• 本機資料會保留\n• 雲端資料不會刪除（其他裝置仍可使用此代碼）\n• 您可以隨時用相同代碼重新連接')) return;
+    
+    ezSetSyncId('');
+    if (typeof _syncPullInterval !== 'undefined' && _syncPullInterval) {
+        clearInterval(_syncPullInterval);
+        _syncPullInterval = null;
+    }
+    if (typeof _syncPushTimer !== 'undefined' && _syncPushTimer) {
+        clearTimeout(_syncPushTimer);
+        _syncPushTimer = null;
+    }
+    
+    addSyncLog('已中斷同步', 'info');
+    showNotif('⚫ 已中斷同步');
+    ezShowSetupPanel();
+}
+
+// 取得目前啟用的同步 URL（簡易模式優先）
+function getActiveSyncEndpoint() {
+    var ezId = ezGetSyncId();
+    if (ezId) {
+        return { type: 'jsonblob', url: EZ_SYNC_URL + '/' + ezId };
+    }
+    var pantryId = localStorage.getItem('_cs_pantryId') || '';
+    if (pantryId) {
+        return { type: 'pantry', url: PANTRY_BASE_URL + '/' + pantryId + '/basket/' + PANTRY_BASKET_NAME };
+    }
+    return null;
+}
+
 var _syncPushTimer = null;
 var _syncPullInterval = null;
 var _syncEnabled = false;
@@ -11844,6 +12098,14 @@ function initCloudSyncPage() {
         var listEl = document.getElementById('cs_logList');
         if (listEl) listEl.innerHTML = _syncLogs.slice(0, 10).join('<br>');
     }
+    
+    // 顯示對應面板（簡易模式優先）
+    var ezId = ezGetSyncId();
+    if (ezId) {
+        ezShowActivePanel();
+    } else {
+        ezShowSetupPanel();
+    }
 }
 
 // 啟用同步
@@ -11929,16 +12191,47 @@ function testCloudSync() {
         });
 }
 
-// 推送到雲端
+// 推送到雲端（自動判斷模式：簡易/Pantry）
 function manualPushToCloud(silent) {
-    var pantryId = getSyncPantryId();
-    if (!pantryId) {
-        if (!silent) alert('⚠️ 請先設定 Pantry ID 並啟用同步');
+    var endpoint = getActiveSyncEndpoint();
+    if (!endpoint) {
+        if (!silent) alert('⚠️ 請先建立同步空間或設定 Pantry ID');
         return;
     }
     
     if (!silent) showNotif('📤 推送到雲端中...');
     
+    // 簡易模式 (JSONBlob)：用 PUT 直接覆蓋整個 blob
+    if (endpoint.type === 'jsonblob') {
+        var allData = { _timestamp: Date.now(), _device: getDeviceId(), _version: 1 };
+        for (var i = 0; i < BACKUP_KEYS.length; i++) {
+            var k = BACKUP_KEYS[i];
+            var v = localStorage.getItem(k);
+            if (v !== null) {
+                try { allData[k] = JSON.parse(v); } catch(e) { allData[k] = v; }
+            }
+        }
+        
+        fetch(endpoint.url, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(allData)
+        }).then(function(r) {
+            if (!r.ok) throw new Error('HTTP ' + r.status);
+        }).then(function() {
+            localStorage.setItem('_cs_lastPush', String(allData._timestamp));
+            localStorage.setItem('_cs_lastKnownTs', String(allData._timestamp));
+            addSyncLog('推送成功（' + Object.keys(allData).length + ' 項）', 'success');
+            if (!silent) showNotif('✅ 推送成功！');
+            updateSyncUI();
+        }).catch(function(err) {
+            addSyncLog('❌ 推送失敗：' + err.message, 'error');
+            if (!silent) alert('❌ 推送失敗：' + err.message);
+        });
+        return;
+    }
+    
+    // Pantry 模式
     var snapshot = { _timestamp: Date.now(), _device: getDeviceId(), _data: {} };
     for (var i = 0; i < BACKUP_KEYS.length; i++) {
         var key = BACKUP_KEYS[i];
@@ -11946,7 +12239,7 @@ function manualPushToCloud(silent) {
         if (v !== null) snapshot._data[key] = v;
     }
     
-    fetch(PANTRY_BASE_URL + '/' + pantryId + '/basket/' + PANTRY_BASKET_NAME, {
+    fetch(endpoint.url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(snapshot)
@@ -11956,7 +12249,7 @@ function manualPushToCloud(silent) {
     }).then(function() {
         localStorage.setItem('_cs_lastPush', String(snapshot._timestamp));
         localStorage.setItem('_cs_lastKnownTs', String(snapshot._timestamp));
-        addSyncLog('推送成功（' + Object.keys(snapshot._data).length + ' 項資料）', 'success');
+        addSyncLog('推送成功（' + Object.keys(snapshot._data).length + ' 項）', 'success');
         if (!silent) showNotif('✅ 推送成功！');
         updateSyncUI();
     }).catch(function(err) {
@@ -11965,17 +12258,17 @@ function manualPushToCloud(silent) {
     });
 }
 
-// 從雲端拉取
+// 從雲端拉取（自動判斷模式）
 function manualPullFromCloud(silent) {
-    var pantryId = getSyncPantryId();
-    if (!pantryId) {
-        if (!silent) alert('⚠️ 請先設定 Pantry ID 並啟用同步');
+    var endpoint = getActiveSyncEndpoint();
+    if (!endpoint) {
+        if (!silent) alert('⚠️ 請先建立同步空間或設定 Pantry ID');
         return;
     }
     
     if (!silent) showNotif('📥 從雲端拉取中...');
     
-    fetch(PANTRY_BASE_URL + '/' + pantryId + '/basket/' + PANTRY_BASKET_NAME)
+    fetch(endpoint.url)
         .then(function(r) {
             if (r.status === 404) {
                 addSyncLog('⚠️ 雲端尚無資料，請先推送', 'info');
@@ -11991,12 +12284,44 @@ function manualPullFromCloud(silent) {
         })
         .then(function(data) {
             if (!data) return;
+            
+            // 簡易模式：資料平鋪在頂層
+            if (endpoint.type === 'jsonblob') {
+                var lastKnown = parseInt(localStorage.getItem('_cs_lastKnownTs') || '0');
+                var dataTs = parseInt(data._timestamp || '0');
+                if (dataTs && dataTs <= lastKnown && data._device === getDeviceId()) {
+                    addSyncLog('雲端資料未變動，略過', 'info');
+                    if (!silent) showNotif('✅ 已是最新');
+                    return;
+                }
+                
+                var applied = 0;
+                for (var k = 0; k < BACKUP_KEYS.length; k++) {
+                    var key = BACKUP_KEYS[k];
+                    if (data[key] !== undefined && data[key] !== null) {
+                        var val = data[key];
+                        localStorage.setItem(key, typeof val === 'string' ? val : JSON.stringify(val));
+                        applied++;
+                    }
+                }
+                
+                localStorage.setItem('_cs_lastPull', String(Date.now()));
+                if (dataTs) localStorage.setItem('_cs_lastKnownTs', String(dataTs));
+                
+                addSyncLog('拉取成功（套用 ' + applied + ' 項）', 'success');
+                if (!silent || applied > 0) showNotif('☁️ 已套用雲端資料（' + applied + ' 項）');
+                
+                updateSyncUI();
+                refreshCurrentPage();
+                return;
+            }
+            
+            // Pantry 模式（_data 結構）
             if (!data._data) {
                 addSyncLog('⚠️ 雲端資料格式不符', 'error');
                 return;
             }
             
-            // 檢查時間戳（避免重複套用）
             var lastKnown = parseInt(localStorage.getItem('_cs_lastKnownTs') || '0');
             if (data._timestamp <= lastKnown && data._device === getDeviceId()) {
                 addSyncLog('雲端資料未變動，略過', 'info');
@@ -12004,7 +12329,6 @@ function manualPullFromCloud(silent) {
                 return;
             }
             
-            // 套用資料
             var applied = 0;
             for (var k in data._data) {
                 if (data._data.hasOwnProperty(k)) {
@@ -12020,8 +12344,6 @@ function manualPullFromCloud(silent) {
             if (!silent || applied > 0) showNotif('☁️ 已套用雲端資料（' + applied + ' 項）');
             
             updateSyncUI();
-            
-            // 刷新當前頁面
             refreshCurrentPage();
         })
         .catch(function(err) {
@@ -12148,10 +12470,11 @@ window.saveData = function(key, value) {
 window.addEventListener('load', function() {
     setTimeout(function() {
         var enabled = localStorage.getItem('_cs_enabled') === '1';
+        var ezId = ezGetSyncId();
         var pantryId = getSyncPantryId();
-        if (enabled && pantryId) {
+        if (enabled && (ezId || pantryId)) {
             _syncEnabled = true;
-            addSyncLog('恢復線上同步狀態', 'info');
+            addSyncLog('恢復線上同步狀態' + (ezId ? '（簡易模式）' : '（Pantry 模式）'), 'info');
             // 啟動定時拉取
             startAutoPull();
             // 啟動時拉一次
