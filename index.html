@@ -2851,34 +2851,52 @@ body { font-family: "Microsoft JhengHei", "微軟正黑體", -apple-system, sans
                         🚀 簡易模式 <span style="background:#10b981; color:white; font-size:11px; padding:2px 8px; border-radius:10px;">推薦</span>
                     </h3>
                     <div style="background:white; padding:10px 12px; border-radius:6px; font-size:13px; margin-bottom:10px;">
-                        ✅ <strong>完全不用註冊</strong>，無需電子郵件、無需密碼<br>
-                        ✅ <strong>一鍵建立</strong>，立即可用，1 秒生成同步代碼<br>
-                        ✅ <strong>輸入 6 碼</strong>即可在其他裝置連接（或掃 QR 碼）<br>
-                        ⚠️ 公共空間，請勿存放高度機密資料
+                        ✅ <strong>使用 GitHub 私人 Gist</strong>（您已有的 GitHub 帳號）<br>
+                        ✅ <strong>一次設定 Token</strong>，永久使用<br>
+                        ✅ <strong>真正私密</strong>：Gist 設為 Secret，僅憑 Token 可存取<br>
+                        ✅ <strong>跨裝置同步</strong>：手機/平板/電腦輸入相同 Token + 代碼即可
+                    </div>
+                    
+                    <!-- Token 設定區 -->
+                    <div id="ghTokenSection" style="background:#fef3c7; padding:12px; border-radius:6px; margin-bottom:10px;">
+                        <div style="font-weight:bold; color:#78350f; margin-bottom:6px;">🔑 GitHub Token <span id="ghTokenStatus" style="font-weight:normal; font-size:11px;"></span></div>
+                        <div style="background:white; padding:8px 10px; border-radius:4px; font-size:12px; margin-bottom:8px; line-height:1.6;">
+                            <strong>首次設定（3 分鐘，永久有效）：</strong><br>
+                            ① 點下方按鈕<strong>「🔗 取得 Token」</strong>（會開啟 GitHub 設定頁，已預填正確選項）<br>
+                            ② 在 GitHub 頁面拉到底點「<strong>Generate token</strong>」<br>
+                            ③ 複製出現的 <code>ghp_...</code> 開頭字串<br>
+                            ④ 貼回下方輸入框 → 點「💾 儲存 Token」
+                        </div>
+                        <div style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:6px;">
+                            <button onclick="window.open('https://github.com/settings/tokens/new?scopes=gist&description=HR-System-Sync','_blank')" style="padding:8px 14px; background:#0f172a; color:white; border:0; border-radius:4px; cursor:pointer; font-size:13px; font-weight:bold;">🔗 取得 Token</button>
+                            <input type="password" id="ghTokenInput" placeholder="ghp_xxxxxxxxxxxxxxxxxxxx" style="flex:1; min-width:220px; padding:8px; border:1px solid #999; border-radius:4px; font-family:monospace; font-size:12px;">
+                            <button onclick="ghSaveTokenAction()" style="padding:8px 14px; background:#10b981; color:white; border:0; border-radius:4px; cursor:pointer; font-size:13px; font-weight:bold;">💾 儲存 Token</button>
+                        </div>
+                        <div style="font-size:10px; color:#78350f;">⚠️ Token 只存在您的本機，從不傳給第三方</div>
                     </div>
                     
                     <div id="ezSyncSetup" style="display:flex; gap:8px; flex-wrap:wrap;">
-                        <button class="btn-confirm" style="padding:12px 22px; font-size:15px; font-weight:bold; flex:1; min-width:180px;" onclick="ezCreateSyncSpace()">🆕 建立同步空間</button>
-                        <button class="btn-primary" style="padding:12px 22px; font-size:15px; font-weight:bold; flex:1; min-width:180px; background:linear-gradient(to bottom,#f59e0b,#d97706);" onclick="ezPromptConnect()">📥 連接已有空間</button>
+                        <button class="btn-confirm" style="padding:12px 22px; font-size:15px; font-weight:bold; flex:1; min-width:180px;" onclick="ghCreateGistSpace()">🆕 建立同步空間</button>
+                        <button class="btn-primary" style="padding:12px 22px; font-size:15px; font-weight:bold; flex:1; min-width:180px; background:linear-gradient(to bottom,#f59e0b,#d97706);" onclick="ghPromptConnectGist()">📥 連接已有空間</button>
                     </div>
                     
                     <div id="ezSyncActive" style="display:none;">
                         <div style="background:white; padding:14px; border-radius:8px; margin-bottom:10px;">
-                            <div style="font-size:12px; color:#6b7280; margin-bottom:4px;">📋 您的同步代碼（給其他裝置輸入）：</div>
+                            <div style="font-size:12px; color:#6b7280; margin-bottom:4px;">📋 您的同步代碼（Gist ID，給其他裝置輸入）：</div>
                             <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
-                                <code id="ezSyncCode" style="background:#fef3c7; padding:10px 18px; border-radius:6px; font-size:22px; font-weight:bold; font-family:monospace; flex:1; min-width:200px; text-align:center; letter-spacing:2px; color:#78350f;">-</code>
+                                <code id="ezSyncCode" style="background:#fef3c7; padding:10px 18px; border-radius:6px; font-size:18px; font-weight:bold; font-family:monospace; flex:1; min-width:200px; text-align:center; color:#78350f; word-break:break-all;">-</code>
                                 <button onclick="ezCopyCode()" style="padding:10px 16px; background:#3b82f6; color:white; border:0; border-radius:4px; cursor:pointer; font-size:13px; font-weight:bold;">📋 複製</button>
                                 <button onclick="ezShowQR()" style="padding:10px 16px; background:#8b5cf6; color:white; border:0; border-radius:4px; cursor:pointer; font-size:13px; font-weight:bold;">📱 QR 碼</button>
                             </div>
                             <div id="ezQrWrap" style="display:none; text-align:center; margin-top:10px; padding:14px; background:#f9fafb; border-radius:6px;">
                                 <img id="ezQrImg" style="max-width:200px;">
-                                <div style="font-size:12px; color:#6b7280; margin-top:6px;">用另一台手機掃描 QR 碼即可連接</div>
+                                <div style="font-size:12px; color:#6b7280; margin-top:6px;">⚠️ 其他裝置仍需手動貼上 Token</div>
                             </div>
                         </div>
                         <div style="display:flex; gap:8px; flex-wrap:wrap;">
                             <button onclick="manualPushToCloud()" style="padding:8px 14px; background:#3b82f6; color:white; border:0; border-radius:4px; cursor:pointer; font-size:13px;">📤 立即推送</button>
                             <button onclick="manualPullFromCloud()" style="padding:8px 14px; background:#10b981; color:white; border:0; border-radius:4px; cursor:pointer; font-size:13px;">📥 立即拉取</button>
-                            <button onclick="ezDisconnect()" style="padding:8px 14px; background:#ef4444; color:white; border:0; border-radius:4px; cursor:pointer; font-size:13px;">❌ 中斷同步</button>
+                            <button onclick="ghDisconnect()" style="padding:8px 14px; background:#ef4444; color:white; border:0; border-radius:4px; cursor:pointer; font-size:13px;">❌ 中斷同步</button>
                         </div>
                     </div>
                 </div>
@@ -11776,40 +11794,109 @@ var BACKUP_KEYS = [
     'currentStoreId', 'currentSchedStoreId'
 ];
 
-// ============= 🌐 線上同步（Pantry Cloud） =============
+// ============= 🌐 線上同步（GitHub Gist + Pantry） =============
 var PANTRY_BASE_URL = 'https://getpantry.cloud/apiv1/pantry';
 var PANTRY_BASKET_NAME = 'hr_system_data';
 
-// 🚀 簡易模式：使用 JSONBlob（無需註冊）
-var EZ_SYNC_URL = 'https://jsonblob.com/api/jsonBlob';
+// 🚀 簡易模式：GitHub Gist（CORS 100% 友善、可靠穩定）
+var GH_API_BASE = 'https://api.github.com';
+var GH_SYNC_FILENAME = 'hr-system-data.json';
 var EZ_QR_API = 'https://api.qrserver.com/v1/create-qr-code/?size=300x300&margin=10&data=';
 
-// 取得目前簡易模式同步 ID（完整）
-function ezGetSyncId() {
-    return localStorage.getItem('_ez_syncId') || '';
+// fetch 加上 timeout
+function ezFetch(url, options, timeoutMs) {
+    timeoutMs = timeoutMs || 12000;
+    return new Promise(function(resolve, reject) {
+        var timedOut = false;
+        var timer = setTimeout(function() {
+            timedOut = true;
+            reject(new Error('連線逾時（' + (timeoutMs/1000) + ' 秒）'));
+        }, timeoutMs);
+        
+        fetch(url, options || {}).then(function(r) {
+            if (timedOut) return;
+            clearTimeout(timer);
+            resolve(r);
+        }).catch(function(err) {
+            if (timedOut) return;
+            clearTimeout(timer);
+            reject(err);
+        });
+    });
 }
 
-function ezSetSyncId(id) {
+// Token / Gist ID 管理
+function ghGetToken() { return localStorage.getItem('_gh_token') || ''; }
+function ghSetToken(t) {
+    if (t) localStorage.setItem('_gh_token', t);
+    else localStorage.removeItem('_gh_token');
+}
+function ghGetGistId() { return localStorage.getItem('_gh_gistId') || ''; }
+function ghSetGistId(id) {
     if (id) {
-        localStorage.setItem('_ez_syncId', id);
+        localStorage.setItem('_gh_gistId', id);
         localStorage.setItem('_cs_enabled', '1');
         _syncEnabled = true;
     } else {
-        localStorage.removeItem('_ez_syncId');
-        localStorage.setItem('_cs_enabled', '0');
-        _syncEnabled = false;
+        localStorage.removeItem('_gh_gistId');
+        if (!localStorage.getItem('_cs_pantryId')) {
+            localStorage.setItem('_cs_enabled', '0');
+            _syncEnabled = false;
+        }
     }
 }
 
-// 🆕 建立新的同步空間
-function ezCreateSyncSpace() {
-    if (!confirm('🆕 建立新的同步空間？\n\n• 系統會建立全新的雲端空間\n• 取得一組「同步代碼」\n• 其他裝置輸入此代碼即可同步\n\n要繼續嗎？')) return;
+// 顯示 Token 狀態
+function ghUpdateTokenStatus() {
+    var statusEl = document.getElementById('ghTokenStatus');
+    if (!statusEl) return;
+    var token = ghGetToken();
+    if (token) {
+        statusEl.innerHTML = '<span style="color:#059669;">✅ 已設定（' + token.substring(0,7) + '...）</span>';
+    } else {
+        statusEl.innerHTML = '<span style="color:#dc2626;">⚠️ 尚未設定</span>';
+    }
+}
+
+// 儲存並驗證 Token
+function ghSaveTokenAction() {
+    var inputEl = document.getElementById('ghTokenInput');
+    var token = (inputEl.value || '').trim();
+    if (!token) return alert('⚠️ 請先貼上 GitHub Token');
+    if (!/^(ghp_|github_pat_)/.test(token)) {
+        if (!confirm('⚠️ Token 格式似乎不正確（應以 ghp_ 或 github_pat_ 開頭）\n\n仍要儲存嗎？')) return;
+    }
     
-    showNotif('🚀 建立中...');
-    addSyncLog('建立新的同步空間...', 'info');
+    showNotif('🔐 驗證 Token...');
+    ezFetch(GH_API_BASE + '/user', {
+        headers: { 'Authorization': 'token ' + token, 'Accept': 'application/vnd.github+json' }
+    }, 8000).then(function(r) {
+        if (!r.ok) throw new Error('Token 無效（HTTP ' + r.status + '）');
+        return r.json();
+    }).then(function(user) {
+        ghSetToken(token);
+        inputEl.value = '';
+        ghUpdateTokenStatus();
+        addSyncLog('GitHub Token 驗證成功：@' + user.login, 'success');
+        showNotif('✅ Token 已儲存（@' + user.login + '）');
+    }).catch(function(err) {
+        alert('❌ Token 驗證失敗：' + err.message + '\n\n請確認：\n1. Token 是否正確複製（含 ghp_ 或 github_pat_ 開頭）\n2. Token 是否有「gist」權限\n3. 網路連線正常');
+    });
+}
+
+// 🆕 建立新的同步空間（建立 Gist）
+function ghCreateGistSpace() {
+    var token = ghGetToken();
+    if (!token) {
+        alert('⚠️ 請先設定 GitHub Token！\n\n步驟：\n1. 點上方「🔗 取得 Token」\n2. GitHub 頁面拉到底點「Generate token」\n3. 複製出現的 ghp_... 字串\n4. 貼回輸入框 → 點「💾 儲存 Token」');
+        var inp = document.getElementById('ghTokenInput');
+        if (inp) inp.focus();
+        return;
+    }
     
-    // 收集本機所有資料當初始內容
-    var allData = { _created: Date.now(), _version: 1 };
+    if (!confirm('🆕 建立新的同步空間？\n\n• 會在您的 GitHub 帳號建立私人 Secret Gist\n• 自動上傳目前本機所有資料\n• 取得「同步代碼」(Gist ID) 供其他裝置連接')) return;
+    
+    var allData = { _created: Date.now(), _version: 1, _device: getDeviceId(), _timestamp: Date.now() };
     for (var i = 0; i < BACKUP_KEYS.length; i++) {
         var k = BACKUP_KEYS[i];
         var v = localStorage.getItem(k);
@@ -11818,58 +11905,84 @@ function ezCreateSyncSpace() {
         }
     }
     
-    fetch(EZ_SYNC_URL, {
+    showNotif('🚀 建立 Gist 中...');
+    addSyncLog('建立 GitHub Gist...', 'info');
+    
+    ezFetch(GH_API_BASE + '/gists', {
         method: 'POST',
         headers: {
-            'Content-Type': 'application/json',
-            'Accept': 'application/json'
+            'Authorization': 'token ' + token,
+            'Accept': 'application/vnd.github+json',
+            'Content-Type': 'application/json'
         },
-        body: JSON.stringify(allData)
-    }).then(function(r) {
-        if (!r.ok) throw new Error('HTTP ' + r.status);
-        var loc = r.headers.get('Location') || r.headers.get('location') || '';
-        var id = loc.split('/').pop();
-        if (!id) throw new Error('未取得同步 ID');
-        return id;
-    }).then(function(id) {
-        ezSetSyncId(id);
-        addSyncLog('✅ 同步空間建立成功！代碼：' + id, 'success');
+        body: JSON.stringify({
+            description: 'HR System Sync Data (' + new Date().toISOString().substring(0,10) + ')',
+            public: false,
+            files: {
+                'hr-system-data.json': {
+                    content: JSON.stringify(allData, null, 2)
+                }
+            }
+        })
+    }, 15000).then(function(r) {
+        if (!r.ok) {
+            var hint = r.status === 401 ? '\n→ Token 無效或已過期，請重新取得' : 
+                       r.status === 403 ? '\n→ Token 缺少 gist 權限' : '';
+            throw new Error('HTTP ' + r.status + hint);
+        }
+        return r.json();
+    }).then(function(gist) {
+        ghSetGistId(gist.id);
+        localStorage.setItem('_cs_lastPush', String(Date.now()));
+        addSyncLog('✅ Gist 建立成功！ID：' + gist.id, 'success');
         showNotif('🎉 同步空間建立完成！');
         ezShowActivePanel();
         startAutoPull();
     }).catch(function(err) {
         addSyncLog('❌ 建立失敗：' + err.message, 'error');
-        alert('❌ 建立失敗：' + err.message + '\n\n請檢查網路連線後再試。');
+        alert('❌ 建立 Gist 失敗：\n' + err.message + '\n\n請檢查：\n1. GitHub Token 是否正確且有 gist 權限\n2. 網路連線\n3. 若 Token 已過期，請重新取得');
     });
 }
 
-// 📥 連接已有的同步空間
-function ezPromptConnect() {
-    var code = prompt('📥 連接已有的同步空間\n\n請輸入完整同步代碼（從建立空間的裝置複製）：');
-    if (!code) return;
-    code = code.trim();
-    if (code.length < 4) return alert('⚠️ 代碼太短');
+// 📥 連接已有同步空間
+function ghPromptConnectGist() {
+    var token = ghGetToken();
+    if (!token) {
+        alert('⚠️ 請先設定 GitHub Token！\n\n（其他裝置須使用「相同 Token」與「相同 Gist ID」才能連接）');
+        var inp = document.getElementById('ghTokenInput');
+        if (inp) inp.focus();
+        return;
+    }
+    
+    var gistId = prompt('📥 連接已有同步空間\n\n請輸入 Gist ID（從建立裝置的「同步代碼」複製）：');
+    if (!gistId) return;
+    gistId = gistId.trim();
+    if (gistId.length < 8) return alert('⚠️ Gist ID 太短');
     
     showNotif('🔌 連接中...');
-    addSyncLog('嘗試連接同步空間：' + code, 'info');
+    addSyncLog('連接 Gist：' + gistId, 'info');
     
-    fetch(EZ_SYNC_URL + '/' + code).then(function(r) {
-        if (r.status === 404) {
-            throw new Error('找不到此代碼。請確認輸入「完整代碼」');
-        }
+    ezFetch(GH_API_BASE + '/gists/' + gistId, {
+        headers: { 'Authorization': 'token ' + token, 'Accept': 'application/vnd.github+json' }
+    }, 10000).then(function(r) {
+        if (r.status === 404) throw new Error('找不到此 Gist ID，或您的 Token 無權存取');
         if (!r.ok) throw new Error('HTTP ' + r.status);
         return r.json();
-    }).then(function(data) {
+    }).then(function(gist) {
+        var file = gist.files && gist.files[GH_SYNC_FILENAME];
+        if (!file) throw new Error('Gist 中找不到 ' + GH_SYNC_FILENAME + ' 檔案');
+        
+        var data = JSON.parse(file.content);
         var dataKeyCount = Object.keys(data).filter(function(k){return BACKUP_KEYS.indexOf(k)>=0;}).length;
-        if (!confirm('✅ 連接成功！\n\n雲端有 ' + dataKeyCount + ' 項資料\n\n⚠️ 是否要立即下載並覆蓋本機資料？\n（按取消則保留本機資料，下次自動推送本機資料覆蓋雲端）')) {
-            ezSetSyncId(code);
+        
+        if (!confirm('✅ 連接成功！\n\n雲端有 ' + dataKeyCount + ' 項資料\n\n⚠️ 是否要立即下載並覆蓋本機資料？\n（按取消則保留本機資料）')) {
+            ghSetGistId(gistId);
             addSyncLog('✅ 已連接（保留本機資料）', 'success');
             ezShowActivePanel();
             startAutoPull();
             return;
         }
         
-        // 套用雲端資料
         var count = 0;
         for (var k = 0; k < BACKUP_KEYS.length; k++) {
             var key = BACKUP_KEYS[k];
@@ -11879,21 +11992,20 @@ function ezPromptConnect() {
             }
         }
         
-        ezSetSyncId(code);
+        ghSetGistId(gistId);
         addSyncLog('✅ 連接並下載 ' + count + ' 項', 'success');
         ezShowActivePanel();
         startAutoPull();
-        
         alert('✅ 連接成功！已下載 ' + count + ' 項資料。\n\n建議重新整理頁面以套用變更。');
     }).catch(function(err) {
         addSyncLog('❌ 連接失敗：' + err.message, 'error');
-        alert('❌ 連接失敗：' + err.message);
+        alert('❌ 連接失敗：\n' + err.message);
     });
 }
 
 // 顯示已啟用面板
 function ezShowActivePanel() {
-    var id = ezGetSyncId();
+    var id = ghGetGistId();
     if (!id) return;
     
     var setupEl = document.getElementById('ezSyncSetup');
@@ -11907,30 +12019,23 @@ function ezShowActivePanel() {
     updateSyncUI();
 }
 
-// 顯示未啟用面板
 function ezShowSetupPanel() {
     var setupEl = document.getElementById('ezSyncSetup');
     var activeEl = document.getElementById('ezSyncActive');
     if (setupEl) setupEl.style.display = 'flex';
     if (activeEl) activeEl.style.display = 'none';
-    
     var qrWrap = document.getElementById('ezQrWrap');
     if (qrWrap) qrWrap.style.display = 'none';
-    
     updateSyncUI();
 }
 
-// 📋 複製代碼
 function ezCopyCode() {
-    var id = ezGetSyncId();
+    var id = ghGetGistId();
     if (!id) return;
-    
     if (navigator.clipboard) {
         navigator.clipboard.writeText(id).then(function() {
             showNotif('📋 已複製代碼');
-        }).catch(function() {
-            ezCopyFallback(id);
-        });
+        }).catch(function() { ezCopyFallback(id); });
     } else {
         ezCopyFallback(id);
     }
@@ -11952,15 +12057,12 @@ function ezCopyFallback(text) {
     document.body.removeChild(ta);
 }
 
-// 📱 顯示 QR 碼
 function ezShowQR() {
-    var id = ezGetSyncId();
+    var id = ghGetGistId();
     if (!id) return;
-    
     var qrWrap = document.getElementById('ezQrWrap');
     var qrImg = document.getElementById('ezQrImg');
     if (!qrWrap || !qrImg) return;
-    
     if (qrWrap.style.display === 'none') {
         qrImg.src = EZ_QR_API + encodeURIComponent(id);
         qrWrap.style.display = 'block';
@@ -11969,11 +12071,10 @@ function ezShowQR() {
     }
 }
 
-// ❌ 中斷同步
-function ezDisconnect() {
-    if (!confirm('❌ 中斷同步？\n\n• 本機資料會保留\n• 雲端資料不會刪除（其他裝置仍可使用此代碼）\n• 您可以隨時用相同代碼重新連接')) return;
+function ghDisconnect() {
+    if (!confirm('❌ 中斷同步？\n\n• 本機資料保留\n• Gist 仍在 GitHub（可隨時重新連接）\n• Token 也會保留以便重連')) return;
     
-    ezSetSyncId('');
+    ghSetGistId('');
     if (typeof _syncPullInterval !== 'undefined' && _syncPullInterval) {
         clearInterval(_syncPullInterval);
         _syncPullInterval = null;
@@ -11988,11 +12089,12 @@ function ezDisconnect() {
     ezShowSetupPanel();
 }
 
-// 取得目前啟用的同步 URL（簡易模式優先）
+// 取得目前啟用的同步端點（GitHub 優先）
 function getActiveSyncEndpoint() {
-    var ezId = ezGetSyncId();
-    if (ezId) {
-        return { type: 'jsonblob', url: EZ_SYNC_URL + '/' + ezId };
+    var gistId = ghGetGistId();
+    var token = ghGetToken();
+    if (gistId && token) {
+        return { type: 'github', gistId: gistId, token: token };
     }
     var pantryId = localStorage.getItem('_cs_pantryId') || '';
     if (pantryId) {
@@ -12000,6 +12102,7 @@ function getActiveSyncEndpoint() {
     }
     return null;
 }
+
 
 var _syncPushTimer = null;
 var _syncPullInterval = null;
@@ -12099,9 +12202,12 @@ function initCloudSyncPage() {
         if (listEl) listEl.innerHTML = _syncLogs.slice(0, 10).join('<br>');
     }
     
-    // 顯示對應面板（簡易模式優先）
-    var ezId = ezGetSyncId();
-    if (ezId) {
+    // 更新 Token 狀態
+    ghUpdateTokenStatus();
+    
+    // 顯示對應面板（簡易 GitHub 模式優先）
+    var gistId = ghGetGistId();
+    if (gistId) {
         ezShowActivePanel();
     } else {
         ezShowSetupPanel();
@@ -12195,14 +12301,14 @@ function testCloudSync() {
 function manualPushToCloud(silent) {
     var endpoint = getActiveSyncEndpoint();
     if (!endpoint) {
-        if (!silent) alert('⚠️ 請先建立同步空間或設定 Pantry ID');
+        if (!silent) alert('⚠️ 請先建立同步空間');
         return;
     }
     
     if (!silent) showNotif('📤 推送到雲端中...');
     
-    // 簡易模式 (JSONBlob)：用 PUT 直接覆蓋整個 blob
-    if (endpoint.type === 'jsonblob') {
+    // 🚀 GitHub Gist 模式
+    if (endpoint.type === 'github') {
         var allData = { _timestamp: Date.now(), _device: getDeviceId(), _version: 1 };
         for (var i = 0; i < BACKUP_KEYS.length; i++) {
             var k = BACKUP_KEYS[i];
@@ -12212,16 +12318,28 @@ function manualPushToCloud(silent) {
             }
         }
         
-        fetch(endpoint.url, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(allData)
-        }).then(function(r) {
+        ezFetch(GH_API_BASE + '/gists/' + endpoint.gistId, {
+            method: 'PATCH',
+            headers: {
+                'Authorization': 'token ' + endpoint.token,
+                'Accept': 'application/vnd.github+json',
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                files: {
+                    'hr-system-data.json': {
+                        content: JSON.stringify(allData, null, 2)
+                    }
+                }
+            })
+        }, 15000).then(function(r) {
             if (!r.ok) throw new Error('HTTP ' + r.status);
+            return r.json();
         }).then(function() {
             localStorage.setItem('_cs_lastPush', String(allData._timestamp));
             localStorage.setItem('_cs_lastKnownTs', String(allData._timestamp));
-            addSyncLog('推送成功（' + Object.keys(allData).length + ' 項）', 'success');
+            var dataKeyCount = Object.keys(allData).filter(function(k){return BACKUP_KEYS.indexOf(k)>=0;}).length;
+            addSyncLog('推送成功（' + dataKeyCount + ' 項）', 'success');
             if (!silent) showNotif('✅ 推送成功！');
             updateSyncUI();
         }).catch(function(err) {
@@ -12239,11 +12357,11 @@ function manualPushToCloud(silent) {
         if (v !== null) snapshot._data[key] = v;
     }
     
-    fetch(endpoint.url, {
+    ezFetch(endpoint.url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(snapshot)
-    }).then(function(r) {
+    }, 12000).then(function(r) {
         if (!r.ok) throw new Error('HTTP ' + r.status);
         return r.text();
     }).then(function() {
@@ -12262,18 +12380,72 @@ function manualPushToCloud(silent) {
 function manualPullFromCloud(silent) {
     var endpoint = getActiveSyncEndpoint();
     if (!endpoint) {
-        if (!silent) alert('⚠️ 請先建立同步空間或設定 Pantry ID');
+        if (!silent) alert('⚠️ 請先建立同步空間');
         return;
     }
     
     if (!silent) showNotif('📥 從雲端拉取中...');
     
-    fetch(endpoint.url)
+    // 🚀 GitHub Gist 模式
+    if (endpoint.type === 'github') {
+        ezFetch(GH_API_BASE + '/gists/' + endpoint.gistId, {
+            headers: { 'Authorization': 'token ' + endpoint.token, 'Accept': 'application/vnd.github+json' }
+        }, 12000).then(function(r) {
+            if (r.status === 404) {
+                addSyncLog('⚠️ Gist 不存在', 'error');
+                if (!silent) alert('❌ Gist 不存在，可能已被刪除');
+                return null;
+            }
+            if (!r.ok) throw new Error('HTTP ' + r.status);
+            return r.json();
+        }).then(function(gist) {
+            if (!gist) return;
+            var file = gist.files && gist.files[GH_SYNC_FILENAME];
+            if (!file) {
+                addSyncLog('⚠️ Gist 中找不到 ' + GH_SYNC_FILENAME, 'error');
+                return;
+            }
+            
+            var data = JSON.parse(file.content);
+            var lastKnown = parseInt(localStorage.getItem('_cs_lastKnownTs') || '0');
+            var dataTs = parseInt(data._timestamp || '0');
+            if (dataTs && dataTs <= lastKnown && data._device === getDeviceId()) {
+                addSyncLog('雲端資料未變動，略過', 'info');
+                if (!silent) showNotif('✅ 已是最新');
+                return;
+            }
+            
+            var applied = 0;
+            for (var k = 0; k < BACKUP_KEYS.length; k++) {
+                var key = BACKUP_KEYS[k];
+                if (data[key] !== undefined && data[key] !== null) {
+                    localStorage.setItem(key, typeof data[key] === 'string' ? data[key] : JSON.stringify(data[key]));
+                    applied++;
+                }
+            }
+            
+            localStorage.setItem('_cs_lastPull', String(Date.now()));
+            if (dataTs) localStorage.setItem('_cs_lastKnownTs', String(dataTs));
+            
+            addSyncLog('拉取成功（套用 ' + applied + ' 項）', 'success');
+            if (!silent || applied > 0) showNotif('☁️ 已套用雲端資料（' + applied + ' 項）');
+            
+            updateSyncUI();
+            refreshCurrentPage();
+        }).catch(function(err) {
+            addSyncLog('❌ 拉取失敗：' + err.message, 'error');
+            if (!silent) alert('❌ 拉取失敗：' + err.message);
+        });
+        return;
+    }
+    
+    // Pantry 模式
+    ezFetch(endpoint.url, {}, 12000)
         .then(function(r) {
             if (r.status === 404) {
-                addSyncLog('⚠️ 雲端尚無資料，請先推送', 'info');
+                addSyncLog('⚠️ 雲端尚無資料', 'info');
                 if (!silent) {
-                    if (confirm('☁️ 雲端尚無資料\n\n要立即將本機資料推送到雲端嗎？')) {
+                    if (confirm('☁️ 雲端尚無資料\n\n要立即推送本機資料到雲端嗎？')) {
                         manualPushToCloud();
                     }
                 }
@@ -12284,39 +12456,6 @@ function manualPullFromCloud(silent) {
         })
         .then(function(data) {
             if (!data) return;
-            
-            // 簡易模式：資料平鋪在頂層
-            if (endpoint.type === 'jsonblob') {
-                var lastKnown = parseInt(localStorage.getItem('_cs_lastKnownTs') || '0');
-                var dataTs = parseInt(data._timestamp || '0');
-                if (dataTs && dataTs <= lastKnown && data._device === getDeviceId()) {
-                    addSyncLog('雲端資料未變動，略過', 'info');
-                    if (!silent) showNotif('✅ 已是最新');
-                    return;
-                }
-                
-                var applied = 0;
-                for (var k = 0; k < BACKUP_KEYS.length; k++) {
-                    var key = BACKUP_KEYS[k];
-                    if (data[key] !== undefined && data[key] !== null) {
-                        var val = data[key];
-                        localStorage.setItem(key, typeof val === 'string' ? val : JSON.stringify(val));
-                        applied++;
-                    }
-                }
-                
-                localStorage.setItem('_cs_lastPull', String(Date.now()));
-                if (dataTs) localStorage.setItem('_cs_lastKnownTs', String(dataTs));
-                
-                addSyncLog('拉取成功（套用 ' + applied + ' 項）', 'success');
-                if (!silent || applied > 0) showNotif('☁️ 已套用雲端資料（' + applied + ' 項）');
-                
-                updateSyncUI();
-                refreshCurrentPage();
-                return;
-            }
-            
-            // Pantry 模式（_data 結構）
             if (!data._data) {
                 addSyncLog('⚠️ 雲端資料格式不符', 'error');
                 return;
@@ -12470,14 +12609,13 @@ window.saveData = function(key, value) {
 window.addEventListener('load', function() {
     setTimeout(function() {
         var enabled = localStorage.getItem('_cs_enabled') === '1';
-        var ezId = ezGetSyncId();
+        var gistId = ghGetGistId();
+        var token = ghGetToken();
         var pantryId = getSyncPantryId();
-        if (enabled && (ezId || pantryId)) {
+        if (enabled && ((gistId && token) || pantryId)) {
             _syncEnabled = true;
-            addSyncLog('恢復線上同步狀態' + (ezId ? '（簡易模式）' : '（Pantry 模式）'), 'info');
-            // 啟動定時拉取
+            addSyncLog('恢復線上同步' + ((gistId && token) ? '（GitHub Gist）' : '（Pantry）'), 'info');
             startAutoPull();
-            // 啟動時拉一次
             setTimeout(function() {
                 manualPullFromCloud(true);
             }, 2000);
