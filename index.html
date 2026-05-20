@@ -1234,6 +1234,7 @@ input[type="time"]::-webkit-datetime-edit-minute-field {
         <div class="menu-item" id="menu-system">⚙️ 系統管理 ▼
             <div class="submenu">
                 <div class="submenu-item" onclick="goToPage('storeManagement','menu-system')">🏬 門市管理</div>
+                <div class="submenu-item" onclick="goToPage('vendorManagement','menu-system')">🏢 進貨廠商管理</div>
                 <div class="submenu-item" onclick="goToPage('accountManagement','menu-system')">👤 帳號管理</div>
                 <div class="submenu-item" onclick="goToPage('permissionSettings','menu-system')">🔐 權限設定</div>
                 <div class="submenu-item" onclick="goToPage('systemParams','menu-system')">⚙️ 系統參數</div>
@@ -2660,6 +2661,63 @@ input[type="time"]::-webkit-datetime-edit-minute-field {
         </div>
     </div>
     
+    <!-- 🏢 進貨廠商管理 -->
+    <div id="page-vendorManagement" class="page-content hidden">
+        <div class="breadcrumb">🏠 <a onclick="showWorkList()">工作清單</a> &gt; ⚙️ 系統管理 &gt; <strong>🏢 進貨廠商管理</strong></div>
+        <div class="main-content">
+            <div class="work-list-panel">
+                <div class="panel-header" style="display:flex; justify-content:space-between; flex-wrap:wrap; gap:8px; align-items:center;">
+                    <h3>🏢 進貨廠商管理</h3>
+                    <div style="display:flex; gap:6px; flex-wrap:wrap;">
+                        <button class="btn-confirm" style="padding:6px 14px; font-size:13px;" onclick="openVendorModal()">➕ 新增廠商</button>
+                        <button class="btn-primary" style="padding:6px 14px; font-size:13px; background:linear-gradient(to bottom,#10b981,#059669);" onclick="exportVendorsCSV()">📤 匯出CSV</button>
+                        <label class="btn-primary" style="padding:6px 14px; font-size:13px; background:linear-gradient(to bottom,#8b5cf6,#7c3aed); cursor:pointer;">📥 匯入CSV<input type="file" accept=".csv" onchange="importVendorsCSV(event)" style="display:none;"></label>
+                    </div>
+                </div>
+                <div class="panel-body">
+                    <div class="alert-box info" style="margin-bottom:12px;">
+                        💡 在此建立進貨廠商清單。設定後，於「📦 進貨驗收」填寫品項時，<strong>廠商名稱改用下拉選擇</strong>，選擇後自動帶入廠商統編，省去打字！
+                    </div>
+                    <div style="margin-bottom:10px;">
+                        <input type="text" id="vendorSearch" placeholder="🔍 搜尋廠商名稱或統編..." oninput="renderVendorList()" style="width:100%; max-width:360px; padding:8px; border:1px solid #ccc; border-radius:5px;">
+                    </div>
+                    <div id="vendorCountInfo" style="font-size:13px; color:#6b7280; margin-bottom:8px;"></div>
+                    <div style="overflow-x:auto;">
+                        <table class="work-table" style="min-width:480px;">
+                            <thead><tr style="background:#1e40af; color:white;"><th style="width:50px;">#</th><th style="width:160px;">廠商統編/編號</th><th>廠商名稱</th><th style="width:120px;">操作</th></tr></thead>
+                            <tbody id="vendorListBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 廠商新增/編輯 Modal -->
+    <div id="vendorModal" class="modal-overlay hidden">
+        <div class="modal-box" style="max-width:420px;">
+            <div class="modal-header">
+                <h3 id="vendorModalTitle">➕ 新增廠商</h3>
+                <button onclick="closeVendorModal()" style="background:none;border:0;font-size:22px;cursor:pointer;">×</button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="vendorEditIndex" value="-1">
+                <div class="form-row" style="flex-direction:column; align-items:stretch; gap:4px;">
+                    <label style="font-weight:bold;">廠商統編/編號：</label>
+                    <input type="text" id="vendorCodeInput" placeholder="如 1683490902" style="padding:8px; border:1px solid #999; border-radius:4px; font-family:monospace;">
+                </div>
+                <div class="form-row" style="flex-direction:column; align-items:stretch; gap:4px; margin-top:10px;">
+                    <label style="font-weight:bold;">廠商名稱：</label>
+                    <input type="text" id="vendorNameInput" placeholder="如 118℃八堵統昶" style="padding:8px; border:1px solid #999; border-radius:4px;">
+                </div>
+            </div>
+            <div class="modal-footer" style="display:flex; gap:8px; justify-content:flex-end; padding:12px;">
+                <button class="btn-secondary" onclick="closeVendorModal()">取消</button>
+                <button class="btn-confirm" onclick="saveVendor()">💾 儲存</button>
+            </div>
+        </div>
+    </div>
+    
     <div id="page-storeManagement" class="page-content hidden">
         <div class="breadcrumb">🏠 <a onclick="showWorkList()">工作清單</a> &gt; ⚙️ 系統管理 &gt; <strong>🏬 門市管理</strong></div>
         <div class="main-content">
@@ -3933,6 +3991,7 @@ var PERMISSION_FEATURES = [
     ]},
     { group: '⚙️ 系統管理', items: [
         { id: 'storeManagement',    name: '🏬 門市管理' },
+        { id: 'vendorManagement',   name: '🏢 進貨廠商管理' },
         { id: 'accountManagement',  name: '👤 帳號管理' },
         { id: 'permissionSettings', name: '🔐 權限設定' },
         { id: 'systemParams',       name: '⚙️ 系統參數' },
@@ -4385,6 +4444,7 @@ function goToPage(pageName, menuId) {
     else if (pageName === 'payroll') { setCurrentMonth('payrollMonth'); renderPayroll(); }
     else if (pageName === 'mySalary') renderMySalary();
     else if (pageName === 'storeManagement') renderStoreList();
+    else if (pageName === 'vendorManagement') initVendorManagement();
     
     // 紀錄訪問日誌
     logAction('view', pageName);
@@ -5869,6 +5929,182 @@ var PR_CATEGORIES = [
 ];
 
 var PR_STATUS_OPTIONS = ['已', '轉', '退', '-'];
+
+// ============= 🏢 進貨廠商資料庫 =============
+// 預設廠商（依統一超商常見供應商）
+var defaultVendors = [
+    { code: '1677804901', name: '大智通文化行銷股份有限公司' },
+    { code: '1683490902', name: '118℃八堵統昶' },
+    { code: '1683490921', name: '冷藏乳品高雄' },
+    { code: '1683490932', name: '冷藏速食八堵' },
+    { code: '1683490990', name: '麵包中壢統昶' },
+    { code: '2352978414', name: '捷盟高雄金門' },
+    { code: '1677804932', name: '大智通文化行銷股份有限公司' },
+    { code: '2255500307', name: '咖啡-統一超' },
+    { code: '2255500323', name: '統一超商-熱狗銷轉進' },
+    { code: '2255500343', name: '統一超商-熱食銷轉進' }
+];
+
+function loadVendors() {
+    return loadData('vendors', defaultVendors);
+}
+
+// ============= 🏢 進貨廠商管理頁 =============
+function initVendorManagement() {
+    renderVendorList();
+}
+
+function renderVendorList() {
+    var vendors = loadVendors();
+    var search = (document.getElementById('vendorSearch') ? document.getElementById('vendorSearch').value : '').trim().toLowerCase();
+    
+    var filtered = vendors;
+    if (search) {
+        filtered = vendors.filter(function(v) {
+            return (v.name || '').toLowerCase().indexOf(search) >= 0 || 
+                   (v.code || '').toLowerCase().indexOf(search) >= 0;
+        });
+    }
+    
+    var info = document.getElementById('vendorCountInfo');
+    if (info) info.textContent = '💡 目前共 ' + vendors.length + ' 家廠商' + (search ? '（符合搜尋 ' + filtered.length + ' 家）' : '');
+    
+    var tbody = document.getElementById('vendorListBody');
+    if (!tbody) return;
+    
+    if (filtered.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; padding:30px; color:#9ca3af;">📭 ' + (search ? '查無符合廠商' : '尚無廠商，點「➕ 新增廠商」開始') + '</td></tr>';
+        return;
+    }
+    
+    var html = '';
+    for (var i = 0; i < vendors.length; i++) {
+        var v = vendors[i];
+        if (search && (v.name || '').toLowerCase().indexOf(search) < 0 && (v.code || '').toLowerCase().indexOf(search) < 0) continue;
+        html += '<tr>';
+        html += '<td style="text-align:center; color:#6b7280;">' + (i+1) + '</td>';
+        html += '<td style="font-family:monospace;">' + (v.code || '') + '</td>';
+        html += '<td><strong>' + (v.name || '') + '</strong></td>';
+        html += '<td style="white-space:nowrap;">';
+        html += '<button onclick="editVendor(' + i + ')" style="padding:4px 10px; background:#3b82f6; color:white; border:0; border-radius:4px; cursor:pointer; font-size:12px; margin-right:4px;">✏️ 編輯</button>';
+        html += '<button onclick="deleteVendor(' + i + ')" style="padding:4px 10px; background:#ef4444; color:white; border:0; border-radius:4px; cursor:pointer; font-size:12px;">🗑️</button>';
+        html += '</td></tr>';
+    }
+    tbody.innerHTML = html;
+}
+
+function openVendorModal() {
+    document.getElementById('vendorModalTitle').textContent = '➕ 新增廠商';
+    document.getElementById('vendorEditIndex').value = '-1';
+    document.getElementById('vendorCodeInput').value = '';
+    document.getElementById('vendorNameInput').value = '';
+    document.getElementById('vendorModal').classList.remove('hidden');
+}
+
+function editVendor(idx) {
+    var vendors = loadVendors();
+    var v = vendors[idx];
+    if (!v) return;
+    document.getElementById('vendorModalTitle').textContent = '✏️ 編輯廠商';
+    document.getElementById('vendorEditIndex').value = String(idx);
+    document.getElementById('vendorCodeInput').value = v.code || '';
+    document.getElementById('vendorNameInput').value = v.name || '';
+    document.getElementById('vendorModal').classList.remove('hidden');
+}
+
+function closeVendorModal() {
+    document.getElementById('vendorModal').classList.add('hidden');
+}
+
+function saveVendor() {
+    var code = document.getElementById('vendorCodeInput').value.trim();
+    var name = document.getElementById('vendorNameInput').value.trim();
+    if (!name) return alert('⚠️ 請輸入廠商名稱');
+    
+    var vendors = loadVendors();
+    var idx = parseInt(document.getElementById('vendorEditIndex').value);
+    
+    if (idx >= 0) {
+        vendors[idx] = { code: code, name: name };
+    } else {
+        // 檢查重複
+        var dup = vendors.find(function(v) { return v.name === name && v.code === code; });
+        if (dup) { closeVendorModal(); return alert('⚠️ 此廠商已存在'); }
+        vendors.push({ code: code, name: name });
+    }
+    
+    saveData('vendors', vendors);
+    closeVendorModal();
+    renderVendorList();
+    showNotif('💾 已儲存廠商：' + name);
+    logAction('vendor', '儲存廠商：' + name);
+}
+
+function deleteVendor(idx) {
+    var vendors = loadVendors();
+    var v = vendors[idx];
+    if (!v) return;
+    if (typeof showConfirmDelete === 'function') {
+        showConfirmDelete('刪除廠商？', '<strong>' + (v.name||'') + '</strong><br>此操作無法復原！', function() {
+            vendors.splice(idx, 1);
+            saveData('vendors', vendors);
+            renderVendorList();
+            showNotif('🗑️ 已刪除廠商');
+        });
+    } else {
+        if (confirm('刪除廠商「' + (v.name||'') + '」？')) {
+            vendors.splice(idx, 1);
+            saveData('vendors', vendors);
+            renderVendorList();
+            showNotif('🗑️ 已刪除廠商');
+        }
+    }
+}
+
+function exportVendorsCSV() {
+    var vendors = loadVendors();
+    var csv = '廠商統編,廠商名稱\n';
+    for (var i = 0; i < vendors.length; i++) {
+        csv += '"' + (vendors[i].code||'') + '","' + (vendors[i].name||'') + '"\n';
+    }
+    var blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = '進貨廠商清單.csv';
+    a.click();
+    URL.revokeObjectURL(url);
+    showNotif('📤 已匯出 ' + vendors.length + ' 家廠商');
+}
+
+function importVendorsCSV(event) {
+    var file = event.target.files[0];
+    if (!file) return;
+    var reader = new FileReader();
+    reader.onload = function(e) {
+        var text = e.target.result;
+        var lines = text.split(/\r?\n/);
+        var vendors = loadVendors();
+        var added = 0;
+        for (var i = 1; i < lines.length; i++) {  // 跳過標題列
+            var line = lines[i].trim();
+            if (!line) continue;
+            var parts = line.split(',').map(function(p) { return p.replace(/^"|"$/g, '').trim(); });
+            if (parts.length >= 2 && parts[1]) {
+                var code = parts[0], name = parts[1];
+                if (!vendors.find(function(v) { return v.name === name && v.code === code; })) {
+                    vendors.push({ code: code, name: name });
+                    added++;
+                }
+            }
+        }
+        saveData('vendors', vendors);
+        renderVendorList();
+        showNotif('📥 已匯入 ' + added + ' 家新廠商');
+    };
+    reader.readAsText(file);
+    event.target.value = '';
+}
 
 // ============= 🔄 51-調撥單 =============
 var _toCurrentItems = [];
@@ -9185,14 +9421,45 @@ function renderPurchaseItems(items) {
             statusOptions += '<option value="' + st + '" ' + seld + '>' + st + '</option>';
         }
         
+        // 🆕 廠商下拉選單（從廠商資料庫）
+        var vendors = loadVendors();
+        var vendorOptions = '<option value="">-- 選擇廠商 --</option>';
+        var matchedVendor = false;
+        for (var vd = 0; vd < vendors.length; vd++) {
+            var vSel = (it.vendorName === vendors[vd].name) ? 'selected' : '';
+            if (vSel) matchedVendor = true;
+            vendorOptions += '<option value="' + vd + '" ' + vSel + '>' + vendors[vd].name + '</option>';
+        }
+        // 若 OCR 帶入的名稱不在清單中，顯示為自訂選項
+        if (!matchedVendor && it.vendorName) {
+            vendorOptions += '<option value="custom" selected>' + it.vendorName + '（自訂）</option>';
+        }
+        
+        // 🆕 進貨日下拉（近 14 天 + 自訂）
+        var dateOptions = '<option value="">-- 進貨日 --</option>';
+        var todayD = new Date();
+        var curDateMatched = false;
+        for (var dd = 0; dd < 14; dd++) {
+            var dObj = new Date(todayD);
+            dObj.setDate(dObj.getDate() - dd);
+            var mmdd = String(dObj.getMonth()+1).padStart(2,'0') + '/' + String(dObj.getDate()).padStart(2,'0');
+            var dSel = (it.scheduledDate === mmdd) ? 'selected' : '';
+            if (dSel) curDateMatched = true;
+            var wd = ['日','一','二','三','四','五','六'][dObj.getDay()];
+            dateOptions += '<option value="' + mmdd + '" ' + dSel + '>' + mmdd + '(' + wd + ')</option>';
+        }
+        if (!curDateMatched && it.scheduledDate) {
+            dateOptions += '<option value="' + it.scheduledDate + '" selected>' + it.scheduledDate + '</option>';
+        }
+        
         html += '<tr data-idx="' + i + '">';
         html += '<td style="text-align:center; background:#fef3c7; font-weight:bold;">' + rowNum + '</td>';
         html += '<td><select onchange="updatePurchaseItem(' + i + ',\'status\',this.value)" style="width:100%;border:1px solid #ddd;padding:3px;font-size:11px;">' + statusOptions + '</select></td>';
         html += '<td><select onchange="updatePurchaseItem(' + i + ',\'category\',this.value)" style="width:100%;border:1px solid #ddd;padding:3px;font-size:11px;">' + catOptions + '</select></td>';
         html += '<td><input type="text" value="' + (it.orderNo || '') + '" oninput="updatePurchaseItem(' + i + ',\'orderNo\',this.value)" style="width:100%;border:1px solid #ddd;padding:3px;font-size:11px;"></td>';
-        html += '<td><input type="text" value="' + (it.scheduledDate || '') + '" placeholder="05/14" oninput="updatePurchaseItem(' + i + ',\'scheduledDate\',this.value)" style="width:100%;border:1px solid #ddd;padding:3px;font-size:11px;"></td>';
-        html += '<td><input type="text" value="' + (it.vendorCode || '') + '" oninput="updatePurchaseItem(' + i + ',\'vendorCode\',this.value)" style="width:100%;border:1px solid #ddd;padding:3px;font-size:11px;"></td>';
-        html += '<td><input type="text" value="' + (it.vendorName || '') + '" oninput="updatePurchaseItem(' + i + ',\'vendorName\',this.value)" style="width:100%;border:1px solid #ddd;padding:3px;font-size:11px;"></td>';
+        html += '<td><select onchange="updatePurchaseItem(' + i + ',\'scheduledDate\',this.value)" style="width:100%;border:1px solid #ddd;padding:3px;font-size:11px;">' + dateOptions + '</select></td>';
+        html += '<td><input type="text" value="' + (it.vendorCode || '') + '" oninput="updatePurchaseItem(' + i + ',\'vendorCode\',this.value)" placeholder="統編" style="width:100%;border:1px solid #ddd;padding:3px;font-size:11px;"></td>';
+        html += '<td><select onchange="onSelectVendor(' + i + ',this.value)" style="width:100%;border:1px solid #ddd;padding:3px;font-size:11px;">' + vendorOptions + '</select></td>';
         html += '<td><input type="number" value="' + (it.allocation || '') + '" oninput="updatePurchaseItem(' + i + ',\'allocation\',this.value)" style="width:100%;border:1px solid #ddd;padding:3px;font-size:11px;text-align:center;"></td>';
         html += '<td><input type="number" value="' + (it.plannedQty || '') + '" oninput="updatePurchaseItem(' + i + ',\'plannedQty\',this.value)" style="width:100%;border:1px solid #ddd;padding:3px;font-size:11px;text-align:right;"></td>';
         html += '<td><input type="number" value="' + (it.dcQty || '') + '" oninput="updatePurchaseItem(' + i + ',\'dcQty\',this.value)" style="width:100%;border:1px solid #ddd;padding:3px;font-size:11px;text-align:right;"></td>';
@@ -9203,6 +9470,22 @@ function renderPurchaseItems(items) {
         html += '</tr>';
     }
     tbody.innerHTML = html;
+}
+
+// 🆕 選擇廠商 → 自動帶入名稱與統編
+function onSelectVendor(idx, value) {
+    if (!_prCurrentItems[idx]) return;
+    if (value === '' || value === 'custom') {
+        // 保留現有
+        return;
+    }
+    var vendors = loadVendors();
+    var v = vendors[parseInt(value)];
+    if (v) {
+        _prCurrentItems[idx].vendorName = v.name;
+        _prCurrentItems[idx].vendorCode = v.code;
+        renderPurchaseItems(_prCurrentItems);
+    }
 }
 
 var _prCurrentItems = [];
@@ -9483,103 +9766,230 @@ function processPurchaseReceiptOCR() {
         document.getElementById('prOcrResult').style.display = 'block';
         document.getElementById('prApplyOcrBtn').style.display = 'inline-block';
         statusEl.textContent = '✅ 辨識完成，請檢查後點「套用」';
+        // 🆕 保存 words 座標供空間解析
+        try {
+            _prOcrWords = (result.data && result.data.words) ? result.data.words : [];
+        } catch(e) { _prOcrWords = []; }
     }).catch(function(err) {
         statusEl.textContent = '❌ 辨識失敗：' + err.message;
     });
 }
 
-// 套用 OCR 結果到表格
+var _prOcrWords = [];  // 進貨 OCR 文字座標
+
+// 套用 OCR 結果到表格（🆕 智能模式辨識 + 空間定位）
 function applyPurchaseReceiptOcr() {
     var text = document.getElementById('prOcrResult').value;
     if (!text) return alert('⚠️ 沒有辨識結果');
     
-    var lines = text.split(/\n/);
-    var newItems = [];
-    
-    // 擷取店號、店名（可能在最上方）
+    // 擷取店號、店名
     var storeCodeMatch = text.match(/店號[：:\s]*(\d+)/);
     var storeNameMatch = text.match(/店名[：:\s]*([\u4e00-\u9fa5]+)/);
-    if (storeCodeMatch) document.getElementById('prStoreCode').value = storeCodeMatch[1];
-    if (storeNameMatch) document.getElementById('prStoreName').value = storeNameMatch[1];
+    if (storeCodeMatch && document.getElementById('prStoreCode')) document.getElementById('prStoreCode').value = storeCodeMatch[1];
+    if (storeNameMatch && document.getElementById('prStoreName')) document.getElementById('prStoreName').value = storeNameMatch[1];
     
-    // 擷取項目代號
-    var itemMatch = text.match(/項\s*(\d{5,8}-\d{2,4})/);
-    if (itemMatch) document.getElementById('prItemCode').value = '項' + itemMatch[1];
+    var newItems = [];
     
-    // 擷取傳票張數
-    var prevMatch = text.match(/前\s*日\s*轉\s*入\s*(\d+)/);
-    var todayInMatch = text.match(/本\s*日\s*進\s*貨\s*(\d+)/);
-    var returnMatch = text.match(/本\s*日\s*退\s*貨\s*(\d+)/);
-    var nextMatch = text.match(/轉\s*入\s*次\s*日\s*(\d+)/);
-    if (prevMatch) document.getElementById('prPrevTransfer').value = prevMatch[1];
-    if (todayInMatch) document.getElementById('prTodayIn').value = todayInMatch[1];
-    if (returnMatch) document.getElementById('prTodayReturn').value = returnMatch[1];
-    if (nextMatch) document.getElementById('prNextTransfer').value = nextMatch[1];
+    // 🥇 優先：用空間座標解析（若有 words）
+    if (_prOcrWords && _prOcrWords.length > 10) {
+        newItems = parsePurchaseWithSpatial(_prOcrWords);
+    }
     
-    // 解析資料列
-    // 預期格式：項# 修正 區分 訂單號碼 日期 廠商編號 廠商名稱 配 ... 成本 零售
-    for (var i = 0; i < lines.length; i++) {
-        var line = lines[i].trim();
-        if (!line) continue;
-        
-        // 必須以數字開頭（項#）且包含多個欄位
-        var match = line.match(/^(\d{1,2})\s+(已|轉|退|-)\s+(\d{2})\s+(\d{10})\s+(\d{2}\/\d{2})\s+(\w{10,12})\s+(.+?)\s+(\d+)\s+(-?[\d,]+\.?\d*)\s+(-?[\d,]+)$/);
-        if (match) {
-            newItems.push({
-                status: match[2],
-                category: match[3],
-                orderNo: match[4],
-                scheduledDate: match[5],
-                vendorCode: match[6],
-                vendorName: match[7].trim(),
-                allocation: parseInt(match[8]),
-                plannedQty: 0,
-                dcQty: 0,
-                receivedQty: 0,
-                costSubtotal: parseFloat(match[9].replace(/,/g, '')) || 0,
-                retailSubtotal: parseFloat(match[10].replace(/,/g, '')) || 0
-            });
-        } else {
-            // 嘗試寬鬆解析（只抓最後兩個金額）
-            var numMatch = line.match(/^(\d{1,2})\s+/);
-            if (numMatch && parseInt(numMatch[1]) <= 30) {
-                var nums = line.match(/-?\d{1,3}(?:,\d{3})*\.?\d*/g);
-                if (nums && nums.length >= 2) {
-                    var cost = parseFloat(nums[nums.length - 2].replace(/,/g, '')) || 0;
-                    var retail = parseFloat(nums[nums.length - 1].replace(/,/g, '')) || 0;
-                    
-                    // 提取訂單號碼（10 位數字）
-                    var orderMatch = line.match(/\b(\d{10})\b/);
-                    var dateMatch = line.match(/(\d{2}\/\d{2})/);
-                    var vendorCodeMatch = line.match(/\b(168\d{7}\w?|167\d{7}|235\d{7})\b/);
-                    
-                    newItems.push({
-                        status: line.indexOf('已') > -1 ? '已' : (line.indexOf('轉') > -1 ? '轉' : '已'),
-                        category: line.indexOf(' 50 ') > -1 ? '50' : '10',
-                        orderNo: orderMatch ? orderMatch[1] : '',
-                        scheduledDate: dateMatch ? dateMatch[1] : '',
-                        vendorCode: vendorCodeMatch ? vendorCodeMatch[1] : '',
-                        vendorName: '',
-                        allocation: 1,
-                        plannedQty: 0,
-                        dcQty: 0,
-                        receivedQty: 0,
-                        costSubtotal: cost,
-                        retailSubtotal: retail
-                    });
-                }
-            }
-        }
+    // 🥈 備援：用文字行模式辨識
+    if (newItems.length === 0) {
+        newItems = parsePurchaseFromText(text);
     }
     
     if (newItems.length === 0) {
-        return alert('⚠️ 未辨識出任何資料列。\n建議：\n1. 圖片要清晰、平整\n2. 或手動修改 OCR 文字後再套用\n3. 也可直接點「➕ 新增列」手動輸入');
+        return alert('⚠️ 未辨識出任何資料列。\n\n建議：\n1. 圖片要清晰、平整、光線充足\n2. 或手動修改上方 OCR 文字後再套用\n3. 也可直接點「➕ 新增列」手動輸入');
     }
     
     _prCurrentItems = newItems;
     renderPurchaseItems(_prCurrentItems);
-    recalcPurchaseTotals();
+    if (typeof recalcPurchaseReceipt === 'function') recalcPurchaseReceipt();
+    else if (typeof recalcPurchaseTotals === 'function') recalcPurchaseTotals();
     showNotif('✅ 已套用 ' + newItems.length + ' 列，請逐項檢查並補齊');
+}
+
+// 🔑 從一行文字用「模式辨識」擷取欄位（不依賴固定位置）
+function parsePurchaseLineByPattern(line) {
+    line = line.trim();
+    if (!line) return null;
+    
+    // 必須以 1-2 位項次數字開頭
+    var itemNoMatch = line.match(/^(\d{1,2})\b/);
+    if (!itemNoMatch) return null;
+    var itemNo = parseInt(itemNoMatch[1]);
+    if (itemNo < 1 || itemNo > 50) return null;
+    
+    // 移除開頭項次，留下其餘
+    var rest = line.substring(itemNoMatch[0].length).trim();
+    
+    // === 用「錨點模式」逐一擷取，擷取後從字串移除，避免互相干擾 ===
+    
+    // 1. 訂單號碼：10 位數字
+    var orderNo = '';
+    var orderMatch = rest.match(/\b(\d{10})\b/);
+    if (orderMatch) {
+        orderNo = orderMatch[1];
+        rest = rest.replace(orderMatch[0], ' ');
+    }
+    
+    // 2. 預定日：MM/DD 格式
+    var scheduledDate = '';
+    var dateMatch = rest.match(/\b(\d{1,2}\/\d{1,2})\b/);
+    if (dateMatch) {
+        scheduledDate = dateMatch[1];
+        rest = rest.replace(dateMatch[0], ' ');
+    }
+    
+    // 3. 廠商編號：10-12 位數字（或含末尾英數）
+    var vendorCode = '';
+    var vcMatch = rest.match(/\b(\d{10}\d{0,2}|\d{9}\w)\b/);
+    if (vcMatch) {
+        vendorCode = vcMatch[1];
+        rest = rest.replace(vcMatch[0], ' ');
+    }
+    
+    // 4. 狀態：已/轉/退
+    var status = '已';
+    if (/退/.test(rest)) status = '退';
+    else if (/轉/.test(rest)) status = '轉';
+    rest = rest.replace(/[已轉退]/g, ' ');
+    
+    // 5. 區分：2 位數字（10/20/31/50/60...）— 在剩餘的開頭附近
+    var category = '10';
+    var catMatch = rest.match(/\b(0[1-9]|[1-9][0-9])\b/);
+    if (catMatch) {
+        category = catMatch[1];
+        // 只移除第一個出現的
+        rest = rest.replace(catMatch[0], ' ');
+    }
+    
+    // 6. 成本價、零售價：取「最後兩個」數字
+    //    成本通常有小數（1,710.72），零售為整數（2,376）
+    var allNums = rest.match(/-?\d{1,3}(?:,\d{3})*(?:\.\d+)?/g) || [];
+    // 過濾掉太小的配本數（通常 < 10 且無小數無逗號的單獨數字可能是配本）
+    var cost = 0, retail = 0;
+    if (allNums.length >= 2) {
+        // 最後兩個數字 = 成本、零售
+        cost = parseFloat(allNums[allNums.length - 2].replace(/,/g, '')) || 0;
+        retail = parseFloat(allNums[allNums.length - 1].replace(/,/g, '')) || 0;
+        // 移除這兩個數字以取得乾淨品名
+        rest = rest.replace(allNums[allNums.length - 1], ' ');
+        rest = rest.replace(allNums[allNums.length - 2], ' ');
+    } else if (allNums.length === 1) {
+        retail = parseFloat(allNums[0].replace(/,/g, '')) || 0;
+        rest = rest.replace(allNums[0], ' ');
+    }
+    
+    // 7. 配本：剩餘的單獨小數字（1-2 位）
+    var allocation = 1;
+    var allocMatch = rest.match(/\b(\d{1,2})\b/);
+    if (allocMatch) {
+        allocation = parseInt(allocMatch[1]) || 1;
+        rest = rest.replace(allocMatch[0], ' ');
+    }
+    
+    // 8. 廠商名稱：剩餘的中文字
+    var nameMatch = rest.match(/[\u4e00-\u9fa5A-Za-z0-9℃\-]+/g);
+    var vendorName = '';
+    if (nameMatch) {
+        // 取最長的中文片段當品名
+        nameMatch.sort(function(a, b) {
+            var ca = (a.match(/[\u4e00-\u9fa5]/g) || []).length;
+            var cb = (b.match(/[\u4e00-\u9fa5]/g) || []).length;
+            return cb - ca;
+        });
+        vendorName = nameMatch[0].trim();
+    }
+    
+    // 至少要有成本或零售或廠商名稱才算有效列
+    if (cost === 0 && retail === 0 && !vendorName) return null;
+    
+    return {
+        status: status,
+        category: category,
+        orderNo: orderNo,
+        scheduledDate: scheduledDate,
+        vendorCode: vendorCode,
+        vendorName: vendorName,
+        allocation: allocation,
+        plannedQty: 0,
+        dcQty: 0,
+        receivedQty: 0,
+        costSubtotal: cost,
+        retailSubtotal: retail
+    };
+}
+
+// 文字模式解析（逐行）
+function parsePurchaseFromText(text) {
+    var lines = text.split(/\n/);
+    var items = [];
+    for (var i = 0; i < lines.length; i++) {
+        var item = parsePurchaseLineByPattern(lines[i]);
+        if (item) items.push(item);
+    }
+    return items;
+}
+
+// 🥇 空間座標解析：依 Y 分行、X 分欄
+function parsePurchaseWithSpatial(words) {
+    // 1. 收集有效文字
+    var valid = [];
+    for (var i = 0; i < words.length; i++) {
+        var w = words[i];
+        if (!w || !w.text || !w.bbox) continue;
+        var txt = String(w.text).trim();
+        if (!txt) continue;
+        valid.push({
+            text: txt,
+            x: (w.bbox.x0 + w.bbox.x1) / 2,
+            y: (w.bbox.y0 + w.bbox.y1) / 2,
+            x0: w.bbox.x0,
+            height: w.bbox.y1 - w.bbox.y0
+        });
+    }
+    if (valid.length === 0) return [];
+    
+    // 2. 依 Y 座標分行（同行容差 = 中位字高的 0.7 倍）
+    var heights = valid.map(function(v){ return v.height; }).sort(function(a,b){ return a-b; });
+    var medianH = heights[Math.floor(heights.length/2)] || 20;
+    var rowTol = Math.max(medianH * 0.7, 12);
+    
+    valid.sort(function(a, b) { return a.y - b.y; });
+    var rows = [];
+    var curRow = [valid[0]];
+    var curY = valid[0].y;
+    for (var v = 1; v < valid.length; v++) {
+        if (Math.abs(valid[v].y - curY) <= rowTol) {
+            curRow.push(valid[v]);
+        } else {
+            rows.push(curRow);
+            curRow = [valid[v]];
+            curY = valid[v].y;
+        }
+    }
+    rows.push(curRow);
+    
+    // 3. 每行依 X 排序後組成文字，再用模式辨識
+    var items = [];
+    for (var r = 0; r < rows.length; r++) {
+        rows[r].sort(function(a, b) { return a.x - b.x; });
+        // 中文字之間不加空格，數字/英文之間加空格
+        var lineText = '';
+        for (var c = 0; c < rows[r].length; c++) {
+            var t = rows[r][c].text;
+            var isCJK = /[\u4e00-\u9fa5]/.test(t);
+            var prevCJK = c > 0 && /[\u4e00-\u9fa5]$/.test(rows[r][c-1].text);
+            if (c > 0 && !(isCJK && prevCJK)) lineText += ' ';
+            lineText += t;
+        }
+        var item = parsePurchaseLineByPattern(lineText);
+        if (item) items.push(item);
+    }
+    return items;
 }
 
 // 歷史
@@ -12628,6 +13038,7 @@ var BACKUP_KEYS = [
     'purchaseReceipts',
     'transferOrders',
     'productCodes',
+    'vendors',
     'inventoryReports',
     'logs',
     'systemSettings',
