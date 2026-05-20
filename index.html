@@ -1175,6 +1175,8 @@ input[type="time"]::-webkit-datetime-edit-minute-field {
                 <button class="btn-action btn-login" onclick="handleLogin()">🔓 登入</button>
             </div>
             <button class="btn-action" style="width:100%; margin-top:10px; background:linear-gradient(135deg,#8b5cf6,#6d28d9); color:white; font-weight:bold; padding:14px; border:0; border-radius:8px; cursor:pointer; font-size:16px;" onclick="openFaceLogin()">🤳 人臉辨識快速登入</button>
+            <button class="btn-action" style="width:100%; margin-top:8px; background:linear-gradient(135deg,#10b981,#059669); color:white; font-weight:bold; padding:10px; border:0; border-radius:8px; cursor:pointer; font-size:14px;" onclick="loginPageSync()">☁️ 同步雲端帳號（換裝置必按）</button>
+            <div id="loginSyncStatus" style="margin-top:6px; font-size:12px; color:#6b7280; text-align:center;"></div>
             <div style="margin-top:15px; padding:10px; background:#fef3c7; border-radius:4px; font-size:12px;">
                 💡 <strong>演示帳號（密碼皆為 123456）：</strong><br>
                 🔴 <code>admin</code> 系統管理員（全功能）<br>
@@ -3917,6 +3919,64 @@ function doLoginAs(user) {
     showWorkList();
     
     logAction('login', '使用者登入：' + currentUser.name + '（' + currentUser.role + '）');
+    
+    // 🆕 登入即同步：立刻從雲端拉取最新資料
+    triggerLoginSync();
+}
+
+// 🆕 登入時自動同步
+function triggerLoginSync() {
+    var enabled = localStorage.getItem('_cs_enabled') === '1';
+    if (!enabled) return;
+    
+    var endpoint = (typeof getActiveSyncEndpoint === 'function') ? getActiveSyncEndpoint() : null;
+    if (!endpoint) return;
+    
+    // 顯示同步中提示
+    showNotif('🔄 登入同步中...');
+    
+    // 先拉取雲端最新資料
+    if (typeof manualPullFromCloud === 'function') {
+        manualPullFromCloud(true);
+    }
+    
+    // 確保自動同步持續運作
+    if (typeof startAutoPull === 'function') {
+        startAutoPull();
+    }
+    
+    // 1.5 秒後提示完成
+    setTimeout(function() {
+        showNotif('✅ 已同步雲端最新資料');
+    }, 1800);
+}
+
+// 🆕 登入畫面手動同步（換新裝置首次抓帳號/人臉用）
+function loginPageSync() {
+    var statusEl = document.getElementById('loginSyncStatus');
+    var setStatus = function(msg) { if (statusEl) statusEl.textContent = msg; };
+    
+    var enabled = localStorage.getItem('_cs_enabled') === '1';
+    var endpoint = (typeof getActiveSyncEndpoint === 'function') ? getActiveSyncEndpoint() : null;
+    
+    if (!enabled || !endpoint) {
+        setStatus('⚠️ 尚未設定同步');
+        alert('⚠️ 此裝置尚未設定線上同步\n\n換新裝置的步驟：\n1. 先用 admin 帳密登入\n2. 進「🌐 線上同步」\n3. 點「📷 掃描設定 QR」對準主裝置的 QR 碼\n\n（或在主裝置「📲 產生跨裝置設定 QR 碼」）');
+        return;
+    }
+    
+    setStatus('🔄 同步中...');
+    
+    if (typeof manualPullFromCloud === 'function') {
+        manualPullFromCloud(true);
+    }
+    
+    setTimeout(function() {
+        var accounts = loadData('accounts', defaultAccounts);
+        var faces = loadData('faceProfiles', []);
+        setStatus('✅ 已同步：' + accounts.length + ' 帳號、' + faces.length + ' 組人臉');
+        showNotif('☁️ 同步完成！可登入或刷臉了');
+    }, 2000);
 }
 
 // ============= 🤳 人臉辨識登入 =============
@@ -3963,9 +4023,24 @@ function stopFaceCamera() {
 
 // 開啟人臉登入
 function openFaceLogin() {
+    // 🆕 先嘗試從雲端同步最新人臉資料（確保其他裝置剛註冊的臉也能登入）
+    var enabled = localStorage.getItem('_cs_enabled') === '1';
+    var endpoint = (typeof getActiveSyncEndpoint === 'function') ? getActiveSyncEndpoint() : null;
+    
+    if (enabled && endpoint && typeof manualPullFromCloud === 'function') {
+        showNotif('🔄 同步最新人臉資料...');
+        manualPullFromCloud(true);
+        // 等同步完成再開啟（給 1.2 秒）
+        setTimeout(_openFaceLoginAfterSync, 1200);
+    } else {
+        _openFaceLoginAfterSync();
+    }
+}
+
+function _openFaceLoginAfterSync() {
     var profiles = loadData('faceProfiles', []);
     if (profiles.length === 0) {
-        return alert('⚠️ 尚未註冊任何人臉\n\n請先用「帳號密碼」登入，\n再到「🤳 人臉登入設定」註冊您的臉。');
+        return alert('⚠️ 尚未註冊任何人臉\n\n請先用「帳號密碼」登入，\n再到「🤳 人臉登入設定」註冊您的臉。\n\n💡 若已在其他裝置註冊，請先點\n「☁️ 同步雲端帳號」按鈕。');
     }
     
     _faceLoginMode = 'login';
@@ -3973,7 +4048,7 @@ function openFaceLogin() {
     var statusEl = document.getElementById('faceLoginStatus');
     var setStatus = function(msg) { if (statusEl) statusEl.textContent = msg; };
     
-    setStatus('⏳ 啟動相機中...');
+    setStatus('⏳ 啟動相機中...（已載入 ' + profiles.length + ' 組人臉）');
     document.getElementById('faceLoginScanBtn').disabled = true;
     
     loadFaceModels(setStatus).then(function() {
@@ -14480,11 +14555,17 @@ window.addEventListener('load', function() {
             _syncEnabled = true;
             addSyncLog('恢復線上同步' + ((gistId && token) ? '（GitHub Gist）' : '（Pantry）'), 'info');
             startAutoPull();
+            // 🆕 啟動時立刻拉取（讓登入畫面的帳號/人臉是最新）
             setTimeout(function() {
                 manualPullFromCloud(true);
-            }, 2000);
+                // 在登入頁顯示同步狀態
+                var loginPage = document.getElementById('loginPage');
+                if (loginPage && !loginPage.classList.contains('hidden')) {
+                    showNotif('☁️ 已同步雲端帳號與人臉資料');
+                }
+            }, 800);
         }
-    }, 1500);
+    }, 600);
 });
 
 
