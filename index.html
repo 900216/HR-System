@@ -782,6 +782,8 @@ input[type="time"]::-webkit-datetime-edit-minute-field {
 
 /* Modal */
 .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 1000; padding: 15px; }
+.modal-box { background: #ffffff; border-radius: 14px; box-shadow: 0 10px 40px rgba(0,0,0,0.5); max-width: 500px; width: 94%; max-height: 92vh; overflow-y: auto; }
+.modal-header { display: flex; justify-content: space-between; align-items: center; }
 .modal-content { background: white; border-radius: 8px; padding: 20px; width: 100%; max-width: 500px; max-height: 90vh; overflow-y: auto; box-shadow: 0 10px 30px rgba(0,0,0,0.3); }
 .modal-title { font-size: 18px; font-weight: bold; margin-bottom: 12px; color: #1f2937; padding-bottom: 10px; border-bottom: 2px solid #fef3c7; }
 
@@ -1276,6 +1278,8 @@ input[type="time"]::-webkit-datetime-edit-minute-field {
         <div class="menu-item" id="menu-biweekly">📰 雙週刊資訊 ▼
             <div class="submenu">
                 <div class="submenu-item" onclick="goToPage('returnCampaign','menu-biweekly')">📦 檔期退貨</div>
+                <div class="submenu-item" onclick="goToPage('marketingFocus','menu-biweekly')">📢 營銷聚焦商品</div>
+                <div class="submenu-item" onclick="goToPage('newProducts','menu-biweekly')">🆕 週五上市新品</div>
             </div>
         </div>
         <div class="menu-item" id="menu-system">⚙️ 系統管理 ▼
@@ -2743,12 +2747,12 @@ input[type="time"]::-webkit-datetime-edit-minute-field {
     
     <!-- 商品項目編輯 Modal（admin）-->
     <div id="rcItemModal" class="modal-overlay hidden">
-        <div class="modal-box" style="max-width:460px;">
-            <div class="modal-header">
-                <h3>➕ 新增退貨商品</h3>
-                <button onclick="closeRcItemModal()" style="background:none;border:0;font-size:22px;cursor:pointer;">×</button>
+        <div class="modal-box" style="max-width:460px; width:94%; background:#ffffff; border-radius:14px; box-shadow:0 10px 40px rgba(0,0,0,0.5); max-height:92vh; overflow-y:auto;">
+            <div class="modal-header" style="background:#dc2626; color:white; padding:14px 16px; border-radius:14px 14px 0 0; position:sticky; top:0; z-index:2;">
+                <h3 style="margin:0; font-size:17px;">➕ 新增退貨商品</h3>
+                <button onclick="closeRcItemModal()" style="background:rgba(255,255,255,0.25);border:0;font-size:22px;cursor:pointer; color:white; width:32px; height:32px; border-radius:50%; line-height:1;">×</button>
             </div>
-            <div class="modal-body">
+            <div class="modal-body" style="padding:16px;">
                 <input type="hidden" id="rcItemEditIdx" value="-1">
                 
                 <!-- 🆕 快速掃碼帶入 -->
@@ -2788,12 +2792,77 @@ input[type="time"]::-webkit-datetime-edit-minute-field {
                     <div style="flex:1;"><label style="font-weight:bold; font-size:13px;">零售(贈)：</label><input type="number" id="rcItemRetailGift" placeholder="59" style="width:100%; padding:8px; border:1px solid #999; border-radius:4px;"></div>
                 </div>
             </div>
-            <div class="modal-footer" style="display:flex; gap:8px; justify-content:flex-end; padding:12px; flex-wrap:wrap;">
-                <button class="btn-secondary" onclick="closeRcItemModal()">取消</button>
-                <button class="btn-primary" style="background:linear-gradient(to bottom,#8b5cf6,#7c3aed);" onclick="saveRcItem(true)">💾 加入並繼續</button>
-                <button class="btn-confirm" onclick="saveRcItem(false)">💾 加入並關閉</button>
+            <div class="modal-footer" style="display:flex; gap:8px; justify-content:flex-end; padding:12px 16px; flex-wrap:wrap; background:#f9fafb; border-radius:0 0 14px 14px; position:sticky; bottom:0; border-top:1px solid #e5e7eb;">
+                <button class="btn-secondary" onclick="closeRcItemModal()" style="padding:10px 16px;">取消</button>
+                <button class="btn-primary" style="background:linear-gradient(to bottom,#8b5cf6,#7c3aed); padding:10px 16px; font-weight:bold;" onclick="saveRcItem(true)">💾 加入並繼續</button>
+                <button class="btn-confirm" style="padding:10px 16px; font-weight:bold;" onclick="saveRcItem(false)">💾 加入並關閉</button>
             </div>
         </div>
+    </div>
+    
+    <!-- 📢 營銷聚焦商品 -->
+    <div id="page-marketingFocus" class="page-content hidden">
+        <div class="breadcrumb">🏠 <a onclick="showWorkList()">工作清單</a> &gt; 📰 雙週刊資訊 &gt; <strong>📢 營銷聚焦商品</strong></div>
+        <div class="main-content">
+            <div class="work-list-panel">
+                <div class="panel-header" style="display:flex; justify-content:space-between; flex-wrap:wrap; gap:8px; align-items:center;">
+                    <h3>📢 營銷聚焦商品</h3>
+                    <div id="mfAdminToolbar" style="display:none; gap:6px; flex-wrap:wrap;">
+                        <button class="btn-confirm" style="padding:6px 14px; font-size:13px;" onclick="openMfEditor()">➕ 新增營銷檔期</button>
+                    </div>
+                </div>
+                <div class="panel-body">
+                    <div class="alert-box info" style="margin-bottom:12px;" id="mfRoleHint"></div>
+                    <div id="mfCampaignList"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 🆕 週五上市新品 -->
+    <div id="page-newProducts" class="page-content hidden">
+        <div class="breadcrumb">🏠 <a onclick="showWorkList()">工作清單</a> &gt; 📰 雙週刊資訊 &gt; <strong>🆕 週五上市新品</strong></div>
+        <div class="main-content">
+            <div class="work-list-panel">
+                <div class="panel-header" style="display:flex; justify-content:space-between; flex-wrap:wrap; gap:8px; align-items:center;">
+                    <h3>🆕 週五上市新品</h3>
+                    <div id="npAdminToolbar" style="display:none; gap:6px; flex-wrap:wrap;">
+                        <button class="btn-confirm" style="padding:6px 14px; font-size:13px;" onclick="openNpEditor()">➕ 新增上市檔期</button>
+                    </div>
+                </div>
+                <div class="panel-body">
+                    <div class="alert-box info" style="margin-bottom:12px;" id="npRoleHint"></div>
+                    <div id="npCampaignList"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 營銷聚焦 詳情 overlay -->
+    <div id="mfDetailOverlay" style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:#f3f4f6; z-index:9000; overflow:auto;">
+        <div style="position:sticky; top:0; background:#059669; color:white; padding:10px 14px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;" class="no-print">
+            <span style="font-weight:bold; font-size:16px;" id="mfDetailTitle">營銷聚焦商品</span>
+            <div style="display:flex; gap:6px; flex-wrap:wrap;">
+                <button id="mfSaveBtn" onclick="saveMfCampaign()" style="display:none; padding:6px 14px; background:#10b981; color:white; border:0; border-radius:4px; cursor:pointer; font-size:13px;">💾 儲存</button>
+                <button onclick="printGeneric()" style="padding:6px 14px; background:#3b82f6; color:white; border:0; border-radius:4px; cursor:pointer; font-size:13px;">🖨️ 列印</button>
+                <button onclick="closeMfDetail()" style="padding:6px 14px; background:#374151; color:white; border:0; border-radius:4px; cursor:pointer; font-size:13px;">✕ 關閉</button>
+            </div>
+        </div>
+        <div id="mfDetailContent" style="padding:16px; max-width:1000px; margin:0 auto;"></div>
+    </div>
+    
+    <!-- 週五新品 詳情 overlay -->
+    <div id="npDetailOverlay" style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:#f3f4f6; z-index:9000; overflow:auto;">
+        <div style="position:sticky; top:0; background:#dc2626; color:white; padding:10px 14px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;" class="no-print">
+            <span style="font-weight:bold; font-size:16px;" id="npDetailTitle">週五上市新品</span>
+            <div style="display:flex; gap:6px; flex-wrap:wrap;">
+                <button id="npSaveBtn" onclick="saveNpCampaign()" style="display:none; padding:6px 14px; background:#10b981; color:white; border:0; border-radius:4px; cursor:pointer; font-size:13px;">💾 儲存</button>
+                <button id="npAddItemBtn" onclick="addNpItem()" style="display:none; padding:6px 14px; background:#8b5cf6; color:white; border:0; border-radius:4px; cursor:pointer; font-size:13px;">➕ 新增商品</button>
+                <button onclick="printGeneric()" style="padding:6px 14px; background:#3b82f6; color:white; border:0; border-radius:4px; cursor:pointer; font-size:13px;">🖨️ 列印</button>
+                <button onclick="closeNpDetail()" style="padding:6px 14px; background:#374151; color:white; border:0; border-radius:4px; cursor:pointer; font-size:13px;">✕ 關閉</button>
+            </div>
+        </div>
+        <div id="npDetailContent" style="padding:16px; max-width:1000px; margin:0 auto;"></div>
     </div>
     
     <div id="page-vendorManagement" class="page-content hidden">
@@ -4374,26 +4443,34 @@ var ROLE_PERMISSIONS = {
                   'cardSupplement', 'leaveApply', 'attendanceQuery', 'schedule',
                   'scheduleQuery', 'shiftSwap', 'reviewMonth', 'employeeBasic',
                   'leaveAllocation', 'insuranceAdd', 'insuranceRemove', 'insuranceQuery',
-                  'changePassword', 'payroll', 'mySalary', 'cashReport', 'purchaseReceipt', 'transferOrder', 'productLibrary']
+                  'changePassword', 'payroll', 'mySalary', 'cashReport', 'purchaseReceipt', 'transferOrder', 'productLibrary',
+                  'inventoryReport', 'returnCampaign']
     },
     'deputy': {
         // 副店長：協助店長，可使用現金日報、排班、請假、薪資查詢
         allowed: ['workList', 'attendanceAbnormal', 'overtimeApply', 'businessTrip',
                   'cardSupplement', 'leaveApply', 'attendanceQuery', 'schedule',
-                  'shiftSwap', 'changePassword', 'mySalary', 'cashReport', 'purchaseReceipt', 'transferOrder', 'productLibrary']
+                  'shiftSwap', 'changePassword', 'mySalary', 'cashReport', 'purchaseReceipt', 'transferOrder', 'productLibrary',
+                  'inventoryReport', 'returnCampaign']
     },
     'staff': {
-        // 一般職員：可看排班作業（唯讀）+ 請假 + 變更密碼 + 我的薪資
-        allowed: ['workList', 'schedule', 'leaveApply', 'changePassword', 'mySalary']
+        // 一般職員：可看排班作業（唯讀）+ 請假 + 變更密碼 + 我的薪資 + 檔期退貨
+        allowed: ['workList', 'schedule', 'leaveApply', 'changePassword', 'mySalary', 'returnCampaign']
     },
     'user': {
-        // 時薪人員：同一般職員
-        allowed: ['workList', 'schedule', 'leaveApply', 'changePassword', 'mySalary']
+        // 時薪人員：同一般職員 + 檔期退貨
+        allowed: ['workList', 'schedule', 'leaveApply', 'changePassword', 'mySalary', 'returnCampaign']
     }
 };
 
 function hasAccess(pageName) {
     if (!currentUser) return false;
+    
+    // 🆕 新功能自動開放（避免舊自訂權限擋住新頁面）：檔期退貨所有人都可用
+    var ALWAYS_ALLOW = ['returnCampaign', 'marketingFocus', 'newProducts'];
+    if (ALWAYS_ALLOW.indexOf(pageName) !== -1) {
+        return true;
+    }
     
     // 1️⃣ 最優先：個別帳號自訂權限
     var customAcc = loadData('customAccountPermissions', {});
@@ -4472,6 +4549,8 @@ var PERMISSION_FEATURES = [
         { id: 'storeManagement',    name: '🏬 門市管理' },
         { id: 'vendorManagement',   name: '🏢 進貨廠商管理' },
         { id: 'returnCampaign',     name: '📦 檔期退貨' },
+        { id: 'marketingFocus',     name: '📢 營銷聚焦商品' },
+        { id: 'newProducts',        name: '🆕 週五上市新品' },
         { id: 'accountManagement',  name: '👤 帳號管理' },
         { id: 'permissionSettings', name: '🔐 權限設定' },
         { id: 'systemParams',       name: '⚙️ 系統參數' },
@@ -4926,6 +5005,8 @@ function goToPage(pageName, menuId) {
     else if (pageName === 'storeManagement') renderStoreList();
     else if (pageName === 'vendorManagement') initVendorManagement();
     else if (pageName === 'returnCampaign') initReturnCampaign();
+    else if (pageName === 'marketingFocus') initMarketingFocus();
+    else if (pageName === 'newProducts') initNewProducts();
     
     // 紀錄訪問日誌
     logAction('view', pageName);
@@ -6967,11 +7048,15 @@ function openRcItemModal() {
     document.getElementById('rcItemRetailGift').value = '';
     var prev = document.getElementById('rcBarcodePreview');
     if (prev) prev.innerHTML = '';
-    document.getElementById('rcItemModal').classList.remove('hidden');
+    var modal = document.getElementById('rcItemModal');
+    modal.classList.remove('hidden');
+    modal.style.zIndex = '99998';  // 🔑 蓋過檔期編輯全螢幕（rcDetailOverlay=9000）
 }
 
 function closeRcItemModal() {
-    document.getElementById('rcItemModal').classList.add('hidden');
+    var modal = document.getElementById('rcItemModal');
+    modal.classList.add('hidden');
+    modal.style.zIndex = '';
 }
 
 // 🆕 條碼輸入時：即時預覽 + 自動帶入商品庫資料
@@ -7144,10 +7229,464 @@ function printRcCampaign() {
     window.print();
 }
 
-// ============= 🏢 進貨廠商管理頁 =============
-function initVendorManagement() {
-    renderVendorList();
+function printGeneric() {
+    window.print();
 }
+
+// ============= 📢 營銷聚焦商品 =============
+var _mfCurrent = null;
+var _mfMode = 'view';
+
+function initMarketingFocus() {
+    var isAdmin = (currentUser && currentUser.role === 'admin');
+    var tb = document.getElementById('mfAdminToolbar');
+    if (tb) tb.style.display = isAdmin ? 'flex' : 'none';
+    var hint = document.getElementById('mfRoleHint');
+    if (hint) hint.innerHTML = isAdmin
+        ? '💡 <strong>管理員</strong>：建立營銷聚焦商品檔期（含聚焦商品、加價購、超值五六日），發布後門市可查看。'
+        : '💡 <strong>門市端</strong>：點下方檔期查看本期營銷聚焦商品資訊。';
+    renderMfList();
+}
+
+function renderMfList() {
+    var camps = loadData('marketingCampaigns', {});
+    var keys = Object.keys(camps).sort(function(a,b){ return (camps[b].createdAt||'').localeCompare(camps[a].createdAt||''); });
+    var container = document.getElementById('mfCampaignList');
+    if (!container) return;
+    var isAdmin = (currentUser && currentUser.role === 'admin');
+    if (keys.length === 0) {
+        container.innerHTML = '<div style="text-align:center; padding:40px; color:#9ca3af;">📭 目前無營銷聚焦資料' + (isAdmin?'<br>點「➕ 新增營銷檔期」開始':'') + '</div>';
+        return;
+    }
+    var html = '';
+    for (var i=0;i<keys.length;i++){
+        var c = camps[keys[i]];
+        html += '<div style="background:white; border:2px solid #d1fae5; border-radius:10px; padding:14px; margin-bottom:10px; cursor:pointer;" onclick="openMfCampaign(\''+keys[i]+'\')">';
+        html += '<div style="font-size:16px; font-weight:bold; color:#059669;">📢 '+(c.title||'營銷聚焦商品')+'</div>';
+        html += '<div style="font-size:12px; color:#374151; margin-top:4px;">🗓️ '+(c.period||'')+'</div>';
+        html += '<div style="font-size:12px; color:#6b7280; margin-top:2px;">聚焦 '+((c.focusItems||[]).length)+' 項｜加價購 '+((c.addonItems||[]).length)+' 項｜超值 '+((c.weekendItems||[]).length)+' 項</div>';
+        if (isAdmin) {
+            html += '<div style="margin-top:8px; display:flex; gap:6px;" onclick="event.stopPropagation();">';
+            html += '<button onclick="openMfCampaign(\''+keys[i]+'\')" style="padding:5px 12px; background:#3b82f6; color:white; border:0; border-radius:4px; cursor:pointer; font-size:12px;">✏️ 編輯</button>';
+            html += '<button onclick="deleteMfCampaign(\''+keys[i]+'\')" style="padding:5px 12px; background:#ef4444; color:white; border:0; border-radius:4px; cursor:pointer; font-size:12px;">🗑️</button>';
+            html += '</div>';
+        }
+        html += '</div>';
+    }
+    container.innerHTML = html;
+}
+
+function openMfEditor() {
+    _mfMode = 'edit';
+    _mfCurrent = { id:'mf_'+Date.now(), title:'營銷聚焦商品', period:'', focusItems:[], addonItems:[], weekendItems:[], createdAt:new Date().toISOString() };
+    renderMfDetail();
+}
+
+function openMfCampaign(id) {
+    var camps = loadData('marketingCampaigns', {});
+    if (!camps[id]) return;
+    _mfCurrent = JSON.parse(JSON.stringify(camps[id]));
+    _mfMode = (currentUser && currentUser.role==='admin') ? 'edit' : 'view';
+    renderMfDetail();
+}
+
+function renderMfDetail() {
+    var c = _mfCurrent; if (!c) return;
+    var isEdit = (_mfMode==='edit');
+    document.getElementById('mfDetailTitle').textContent = c.title || '營銷聚焦商品';
+    document.getElementById('mfSaveBtn').style.display = isEdit ? 'inline-block' : 'none';
+    
+    var html = '';
+    // 標題與期間
+    html += '<div style="background:white; padding:16px; border-radius:10px; margin-bottom:12px;">';
+    html += '<h1 style="text-align:center; color:#059669; margin:0 0 10px 0;">📢 ' + (c.title||'營銷聚焦商品') + '</h1>';
+    if (isEdit) {
+        html += '<div><label style="font-size:12px; color:#6b7280;">活動期間：</label><input type="text" id="mfPeriod" value="'+(c.period||'')+'" placeholder="如 5/27~6/9" style="width:100%; padding:6px; border:1px solid #ccc; border-radius:4px;"></div>';
+    } else {
+        html += '<div style="text-align:center; color:#374151;">🗓️ '+(c.period||'')+'</div>';
+    }
+    html += '</div>';
+    
+    // === 區塊1：營銷聚焦商品 ===
+    html += '<div style="background:white; padding:12px; border-radius:10px; margin-bottom:12px; overflow-x:auto;">';
+    html += '<h3 style="color:#dc2626; margin:0 0 8px 0;">🎯 營銷聚焦商品</h3>';
+    if (isEdit) html += '<button onclick="addMfItem(\'focus\')" style="margin-bottom:8px; padding:6px 12px; background:#10b981; color:white; border:0; border-radius:4px; cursor:pointer;">➕ 新增聚焦商品</button>';
+    html += '<table style="width:100%; border-collapse:collapse; font-size:12px; min-width:600px;"><thead><tr style="background:#dc2626; color:white;">';
+    html += '<th style="padding:6px; border:1px solid #ccc;">品名</th><th style="padding:6px; border:1px solid #ccc;">品號/頁數</th><th style="padding:6px; border:1px solid #ccc;">商品圖</th><th style="padding:6px; border:1px solid #ccc;">零售價</th><th style="padding:6px; border:1px solid #ccc;">重點提示</th><th style="padding:6px; border:1px solid #ccc;">目標</th>';
+    if (isEdit) html += '<th style="padding:6px; border:1px solid #ccc;"></th>';
+    html += '</tr></thead><tbody>';
+    html += renderMfItemRows(c.focusItems||[], 'focus', isEdit);
+    html += '</tbody></table></div>';
+    
+    // === 區塊2：當筆加價購 ===
+    html += '<div style="background:white; padding:12px; border-radius:10px; margin-bottom:12px; overflow-x:auto;">';
+    html += '<h3 style="color:#059669; margin:0 0 8px 0;">💰 當筆加價購聚焦商品</h3>';
+    if (isEdit) html += '<button onclick="addMfItem(\'addon\')" style="margin-bottom:8px; padding:6px 12px; background:#10b981; color:white; border:0; border-radius:4px; cursor:pointer;">➕ 新增加價購商品</button>';
+    html += '<table style="width:100%; border-collapse:collapse; font-size:12px; min-width:500px;"><thead><tr style="background:#059669; color:white;">';
+    html += '<th style="padding:6px; border:1px solid #ccc;">品名</th><th style="padding:6px; border:1px solid #ccc;">訂貨品號</th><th style="padding:6px; border:1px solid #ccc;">商品圖</th><th style="padding:6px; border:1px solid #ccc;">原價</th><th style="padding:6px; border:1px solid #ccc;">優惠價</th>';
+    if (isEdit) html += '<th style="padding:6px; border:1px solid #ccc;"></th>';
+    html += '</tr></thead><tbody>';
+    html += renderMfItemRows(c.addonItems||[], 'addon', isEdit);
+    html += '</tbody></table></div>';
+    
+    // === 區塊3：超值五六日 ===
+    html += '<div style="background:white; padding:12px; border-radius:10px; overflow-x:auto;">';
+    html += '<h3 style="color:#b45309; margin:0 0 8px 0;">🏷️ 超值五六日聚焦商品</h3>';
+    if (isEdit) html += '<button onclick="addMfItem(\'weekend\')" style="margin-bottom:8px; padding:6px 12px; background:#10b981; color:white; border:0; border-radius:4px; cursor:pointer;">➕ 新增超值商品</button>';
+    html += '<table style="width:100%; border-collapse:collapse; font-size:12px; min-width:500px;"><thead><tr style="background:#b45309; color:white;">';
+    html += '<th style="padding:6px; border:1px solid #ccc;">活動期間</th><th style="padding:6px; border:1px solid #ccc;">品號</th><th style="padding:6px; border:1px solid #ccc;">品名</th><th style="padding:6px; border:1px solid #ccc;">原價</th><th style="padding:6px; border:1px solid #ccc;">促銷價</th>';
+    if (isEdit) html += '<th style="padding:6px; border:1px solid #ccc;"></th>';
+    html += '</tr></thead><tbody>';
+    html += renderMfItemRows(c.weekendItems||[], 'weekend', isEdit);
+    html += '</tbody></table></div>';
+    
+    document.getElementById('mfDetailContent').innerHTML = html;
+    document.getElementById('mfDetailOverlay').style.display = 'block';
+}
+
+function renderMfItemRows(items, type, isEdit) {
+    var html = '';
+    if (items.length === 0 && !isEdit) {
+        var cols = (type==='focus')?6:(type==='weekend')?5:5;
+        return '<tr><td colspan="'+cols+'" style="text-align:center; padding:12px; color:#9ca3af;">無資料</td></tr>';
+    }
+    for (var i=0;i<items.length;i++){
+        var it = items[i];
+        html += '<tr>';
+        if (type==='focus') {
+            if (isEdit) {
+                html += '<td style="padding:3px; border:1px solid #ccc;"><input value="'+(it.name||'').replace(/"/g,'&quot;')+'" onchange="updateMfItem(\'focus\','+i+',\'name\',this.value)" style="width:100%; padding:3px; border:1px solid #ddd;"></td>';
+                html += '<td style="padding:3px; border:1px solid #ccc;"><input value="'+(it.code||'')+'" onchange="updateMfItem(\'focus\','+i+',\'code\',this.value)" style="width:100%; padding:3px; border:1px solid #ddd; font-family:monospace;"></td>';
+                html += '<td style="padding:3px; border:1px solid #ccc; text-align:center;">'+mfPhotoCell(it,'focus',i)+'</td>';
+                html += '<td style="padding:3px; border:1px solid #ccc;"><input value="'+(it.retailPrice||'')+'" onchange="updateMfItem(\'focus\','+i+',\'retailPrice\',this.value)" style="width:100%; padding:3px; border:1px solid #ddd;"></td>';
+                html += '<td style="padding:3px; border:1px solid #ccc;"><textarea onchange="updateMfItem(\'focus\','+i+',\'keypoints\',this.value)" style="width:100%; padding:3px; border:1px solid #ddd; min-height:50px;">'+(it.keypoints||'')+'</textarea></td>';
+                html += '<td style="padding:3px; border:1px solid #ccc;"><input value="'+(it.target||'')+'" onchange="updateMfItem(\'focus\','+i+',\'target\',this.value)" style="width:100%; padding:3px; border:1px solid #ddd;"></td>';
+                html += '<td style="padding:3px; border:1px solid #ccc; text-align:center;"><button onclick="deleteMfItem(\'focus\','+i+')" style="padding:3px 6px; background:#ef4444; color:white; border:0; border-radius:4px; cursor:pointer;">🗑️</button></td>';
+            } else {
+                html += '<td style="padding:6px; border:1px solid #ccc; font-weight:bold;">'+(it.name||'')+'</td>';
+                html += '<td style="padding:6px; border:1px solid #ccc; font-family:monospace;">'+(it.code||'')+'</td>';
+                html += '<td style="padding:6px; border:1px solid #ccc; text-align:center;">'+(it.photo?'<img src="'+it.photo+'" style="width:50px;height:50px;object-fit:cover;border-radius:4px;">':'')+'</td>';
+                html += '<td style="padding:6px; border:1px solid #ccc; text-align:center; color:#dc2626; font-weight:bold;">'+(it.retailPrice||'')+'</td>';
+                html += '<td style="padding:6px; border:1px solid #ccc; white-space:pre-wrap; font-size:11px;">'+(it.keypoints||'')+'</td>';
+                html += '<td style="padding:6px; border:1px solid #ccc; text-align:center;">'+(it.target||'')+'</td>';
+            }
+        } else if (type==='addon') {
+            if (isEdit) {
+                html += '<td style="padding:3px; border:1px solid #ccc;"><input value="'+(it.name||'').replace(/"/g,'&quot;')+'" onchange="updateMfItem(\'addon\','+i+',\'name\',this.value)" style="width:100%; padding:3px; border:1px solid #ddd;"></td>';
+                html += '<td style="padding:3px; border:1px solid #ccc;"><input value="'+(it.code||'')+'" onchange="updateMfItem(\'addon\','+i+',\'code\',this.value)" style="width:100%; padding:3px; border:1px solid #ddd; font-family:monospace;"></td>';
+                html += '<td style="padding:3px; border:1px solid #ccc; text-align:center;">'+mfPhotoCell(it,'addon',i)+'</td>';
+                html += '<td style="padding:3px; border:1px solid #ccc;"><input value="'+(it.originalPrice||'')+'" onchange="updateMfItem(\'addon\','+i+',\'originalPrice\',this.value)" style="width:100%; padding:3px; border:1px solid #ddd;"></td>';
+                html += '<td style="padding:3px; border:1px solid #ccc;"><input value="'+(it.salePrice||'')+'" onchange="updateMfItem(\'addon\','+i+',\'salePrice\',this.value)" style="width:100%; padding:3px; border:1px solid #ddd;"></td>';
+                html += '<td style="padding:3px; border:1px solid #ccc; text-align:center;"><button onclick="deleteMfItem(\'addon\','+i+')" style="padding:3px 6px; background:#ef4444; color:white; border:0; border-radius:4px; cursor:pointer;">🗑️</button></td>';
+            } else {
+                html += '<td style="padding:6px; border:1px solid #ccc; font-weight:bold;">'+(it.name||'')+'</td>';
+                html += '<td style="padding:6px; border:1px solid #ccc; font-family:monospace;">'+(it.code||'')+'</td>';
+                html += '<td style="padding:6px; border:1px solid #ccc; text-align:center;">'+(it.photo?'<img src="'+it.photo+'" style="width:50px;height:50px;object-fit:cover;border-radius:4px;">':'')+'</td>';
+                html += '<td style="padding:6px; border:1px solid #ccc; text-align:center;">'+(it.originalPrice||'')+'</td>';
+                html += '<td style="padding:6px; border:1px solid #ccc; text-align:center; color:#dc2626; font-weight:bold;">'+(it.salePrice||'')+'</td>';
+            }
+        } else { // weekend
+            if (isEdit) {
+                html += '<td style="padding:3px; border:1px solid #ccc;"><input value="'+(it.period||'')+'" placeholder="5/29-5/31" onchange="updateMfItem(\'weekend\','+i+',\'period\',this.value)" style="width:100%; padding:3px; border:1px solid #ddd;"></td>';
+                html += '<td style="padding:3px; border:1px solid #ccc;"><input value="'+(it.code||'')+'" onchange="updateMfItem(\'weekend\','+i+',\'code\',this.value)" style="width:100%; padding:3px; border:1px solid #ddd; font-family:monospace;"></td>';
+                html += '<td style="padding:3px; border:1px solid #ccc;"><input value="'+(it.name||'').replace(/"/g,'&quot;')+'" onchange="updateMfItem(\'weekend\','+i+',\'name\',this.value)" style="width:100%; padding:3px; border:1px solid #ddd;"></td>';
+                html += '<td style="padding:3px; border:1px solid #ccc;"><input value="'+(it.originalPrice||'')+'" onchange="updateMfItem(\'weekend\','+i+',\'originalPrice\',this.value)" style="width:100%; padding:3px; border:1px solid #ddd;"></td>';
+                html += '<td style="padding:3px; border:1px solid #ccc;"><input value="'+(it.salePrice||'')+'" onchange="updateMfItem(\'weekend\','+i+',\'salePrice\',this.value)" style="width:100%; padding:3px; border:1px solid #ddd;"></td>';
+                html += '<td style="padding:3px; border:1px solid #ccc; text-align:center;"><button onclick="deleteMfItem(\'weekend\','+i+')" style="padding:3px 6px; background:#ef4444; color:white; border:0; border-radius:4px; cursor:pointer;">🗑️</button></td>';
+            } else {
+                html += '<td style="padding:6px; border:1px solid #ccc; text-align:center;">'+(it.period||'')+'</td>';
+                html += '<td style="padding:6px; border:1px solid #ccc; font-family:monospace;">'+(it.code||'')+'</td>';
+                html += '<td style="padding:6px; border:1px solid #ccc;">'+(it.name||'')+'</td>';
+                html += '<td style="padding:6px; border:1px solid #ccc; text-align:center;">'+(it.originalPrice||'')+'</td>';
+                html += '<td style="padding:6px; border:1px solid #ccc; text-align:center; color:#dc2626; font-weight:bold;">'+(it.salePrice||'')+'</td>';
+            }
+        }
+        html += '</tr>';
+    }
+    return html;
+}
+
+function mfPhotoCell(it, type, i) {
+    var h = '';
+    if (it.photo) h += '<img src="'+it.photo+'" style="width:40px;height:40px;object-fit:cover;border-radius:4px;"><br>';
+    h += '<label style="display:inline-block; padding:2px 6px; background:#3b82f6; color:white; border-radius:4px; cursor:pointer; font-size:10px;">📷<input type="file" accept="image/*" capture="environment" onchange="uploadMfPhoto(\''+type+'\','+i+',this)" style="display:none;"></label>';
+    return h;
+}
+
+function addMfItem(type) {
+    if (!_mfCurrent) return;
+    var key = type+'Items';
+    if (!_mfCurrent[key]) _mfCurrent[key] = [];
+    if (type==='focus') _mfCurrent[key].push({name:'',code:'',photo:'',retailPrice:'',keypoints:'',target:''});
+    else if (type==='addon') _mfCurrent[key].push({name:'',code:'',photo:'',originalPrice:'',salePrice:''});
+    else _mfCurrent[key].push({period:'',code:'',name:'',originalPrice:'',salePrice:''});
+    renderMfDetail();
+}
+
+function updateMfItem(type, idx, field, val) {
+    var key = type+'Items';
+    if (_mfCurrent[key] && _mfCurrent[key][idx]) _mfCurrent[key][idx][field] = val;
+}
+
+function deleteMfItem(type, idx) {
+    var key = type+'Items';
+    if (_mfCurrent[key]) { _mfCurrent[key].splice(idx,1); renderMfDetail(); }
+}
+
+function uploadMfPhoto(type, idx, input) {
+    var file = input.files[0]; if (!file) return;
+    var reader = new FileReader();
+    reader.onload = function(e) {
+        var img = new Image();
+        img.onload = function() {
+            var canvas = document.createElement('canvas');
+            var scale = Math.min(1, 400/img.width);
+            canvas.width = img.width*scale; canvas.height = img.height*scale;
+            canvas.getContext('2d').drawImage(img,0,0,canvas.width,canvas.height);
+            _mfCurrent[type+'Items'][idx].photo = canvas.toDataURL('image/jpeg',0.7);
+            renderMfDetail();
+            showNotif('📷 已上傳商品照片');
+        };
+        img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+}
+
+function saveMfCampaign() {
+    var c = _mfCurrent; if (!c) return;
+    c.period = document.getElementById('mfPeriod').value;
+    var camps = loadData('marketingCampaigns', {});
+    camps[c.id] = c;
+    saveData('marketingCampaigns', camps);
+    showNotif('💾 已儲存營銷檔期');
+    logAction('marketing', '儲存營銷聚焦：'+(c.title||''));
+    closeMfDetail();
+}
+
+function closeMfDetail() {
+    document.getElementById('mfDetailOverlay').style.display = 'none';
+    _mfCurrent = null;
+    renderMfList();
+}
+
+function deleteMfCampaign(id) {
+    var camps = loadData('marketingCampaigns', {});
+    if (!camps[id]) return;
+    showConfirmDelete('刪除營銷檔期？', '<strong>'+(camps[id].title||'')+'</strong><br>無法復原！', function() {
+        delete camps[id]; saveData('marketingCampaigns', camps); renderMfList(); showNotif('🗑️ 已刪除');
+    });
+}
+
+// ============= 🆕 週五上市新品 =============
+var _npCurrent = null;
+var _npMode = 'view';
+
+function initNewProducts() {
+    var isAdmin = (currentUser && currentUser.role === 'admin');
+    var tb = document.getElementById('npAdminToolbar');
+    if (tb) tb.style.display = isAdmin ? 'flex' : 'none';
+    var hint = document.getElementById('npRoleHint');
+    if (hint) hint.innerHTML = isAdmin
+        ? '💡 <strong>管理員</strong>：建立週五上市新品檔期，逐項填寫商品資訊（含條碼、規格、目標客層），發布後門市可查看。'
+        : '💡 <strong>門市端</strong>：點下方檔期查看本期上市新品詳細資訊與條碼。';
+    renderNpList();
+}
+
+function renderNpList() {
+    var camps = loadData('newProductCampaigns', {});
+    var keys = Object.keys(camps).sort(function(a,b){ return (camps[b].createdAt||'').localeCompare(camps[a].createdAt||''); });
+    var container = document.getElementById('npCampaignList');
+    if (!container) return;
+    var isAdmin = (currentUser && currentUser.role === 'admin');
+    if (keys.length === 0) {
+        container.innerHTML = '<div style="text-align:center; padding:40px; color:#9ca3af;">📭 目前無上市新品資料' + (isAdmin?'<br>點「➕ 新增上市檔期」開始':'') + '</div>';
+        return;
+    }
+    var html = '';
+    for (var i=0;i<keys.length;i++){
+        var c = camps[keys[i]];
+        html += '<div style="background:white; border:2px solid #fecaca; border-radius:10px; padding:14px; margin-bottom:10px; cursor:pointer;" onclick="openNpCampaign(\''+keys[i]+'\')">';
+        html += '<div style="font-size:16px; font-weight:bold; color:#dc2626;">🆕 '+(c.title||'週五上市新品')+'</div>';
+        html += '<div style="font-size:12px; color:#374151; margin-top:4px;">📅 開始訂貨日：'+(c.orderStartDate||'?')+'</div>';
+        html += '<div style="font-size:12px; color:#6b7280; margin-top:2px;">📋 共 '+((c.items||[]).length)+' 項新品</div>';
+        if (isAdmin) {
+            html += '<div style="margin-top:8px; display:flex; gap:6px;" onclick="event.stopPropagation();">';
+            html += '<button onclick="openNpCampaign(\''+keys[i]+'\')" style="padding:5px 12px; background:#3b82f6; color:white; border:0; border-radius:4px; cursor:pointer; font-size:12px;">✏️ 編輯</button>';
+            html += '<button onclick="deleteNpCampaign(\''+keys[i]+'\')" style="padding:5px 12px; background:#ef4444; color:white; border:0; border-radius:4px; cursor:pointer; font-size:12px;">🗑️</button>';
+            html += '</div>';
+        }
+        html += '</div>';
+    }
+    container.innerHTML = html;
+}
+
+function openNpEditor() {
+    _npMode = 'edit';
+    _npCurrent = { id:'np_'+Date.now(), title:'週五上市新品', orderStartDate:'', items:[], createdAt:new Date().toISOString() };
+    renderNpDetail();
+}
+
+function openNpCampaign(id) {
+    var camps = loadData('newProductCampaigns', {});
+    if (!camps[id]) return;
+    _npCurrent = JSON.parse(JSON.stringify(camps[id]));
+    _npMode = (currentUser && currentUser.role==='admin') ? 'edit' : 'view';
+    renderNpDetail();
+}
+
+function renderNpDetail() {
+    var c = _npCurrent; if (!c) return;
+    var isEdit = (_npMode==='edit');
+    document.getElementById('npDetailTitle').textContent = c.title || '週五上市新品';
+    document.getElementById('npSaveBtn').style.display = isEdit ? 'inline-block' : 'none';
+    document.getElementById('npAddItemBtn').style.display = isEdit ? 'inline-block' : 'none';
+    
+    var html = '';
+    html += '<div style="background:white; padding:16px; border-radius:10px; margin-bottom:12px;">';
+    html += '<h1 style="text-align:center; color:#dc2626; margin:0 0 10px 0;">🆕 ' + (c.title||'週五上市新品') + '</h1>';
+    if (isEdit) {
+        html += '<div><label style="font-size:12px; color:#6b7280;">開始訂貨日：</label><input type="date" id="npOrderDate" value="'+(c.orderStartDate||'')+'" style="width:100%; padding:6px; border:1px solid #ccc; border-radius:4px;"></div>';
+    } else {
+        html += '<div style="text-align:right; color:#dc2626; font-weight:bold;">開始訂貨日：'+(c.orderStartDate||'?')+'</div>';
+    }
+    html += '</div>';
+    
+    if (!c.items || c.items.length===0) {
+        html += '<div style="background:white; padding:30px; border-radius:10px; text-align:center; color:#9ca3af;">尚無新品，'+(isEdit?'點上方「➕ 新增商品」':'請等待管理員建檔')+'</div>';
+    } else {
+        for (var i=0;i<c.items.length;i++){
+            html += renderNpItemCard(c.items[i], i, isEdit);
+        }
+    }
+    
+    document.getElementById('npDetailContent').innerHTML = html;
+    document.getElementById('npDetailOverlay').style.display = 'block';
+    renderAllBarcodes();
+}
+
+function renderNpItemCard(it, i, isEdit) {
+    var html = '<div style="background:white; padding:14px; border-radius:10px; margin-bottom:12px; border-left:4px solid #dc2626;">';
+    if (isEdit) {
+        html += '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;"><strong style="color:#dc2626;">商品 '+(i+1)+'</strong><button onclick="deleteNpItem('+i+')" style="padding:3px 10px; background:#ef4444; color:white; border:0; border-radius:4px; cursor:pointer; font-size:12px;">🗑️ 刪除</button></div>';
+        html += '<div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">';
+        // 照片
+        html += '<div style="grid-column:1/3; text-align:center;">';
+        if (it.photo) html += '<img src="'+it.photo+'" style="max-width:120px; max-height:120px; object-fit:contain; border-radius:6px;"><br>';
+        html += '<label style="display:inline-block; padding:4px 10px; background:#3b82f6; color:white; border-radius:4px; cursor:pointer; font-size:12px; margin-top:4px;">📷 '+(it.photo?'更換照片':'拍照/上傳')+'<input type="file" accept="image/*" capture="environment" onchange="uploadNpPhoto('+i+',this)" style="display:none;"></label></div>';
+        html += npField('商品名稱', it, 'name', i, 'text', '1/3');
+        html += npField('品號', it, 'code', i, 'text');
+        html += npField('單品條碼', it, 'barcode', i, 'text');
+        html += npField('零售價', it, 'retailPrice', i, 'text');
+        html += npField('零售單位', it, 'retailUnit', i, 'text');
+        html += npField('商品等級', it, 'grade', i, 'text');
+        html += npField('門市最低訂貨倍數', it, 'minOrder', i, 'text');
+        html += npField('包裝入數', it, 'packQty', i, 'text');
+        html += npField('保存期限', it, 'shelfLife', i, 'text');
+        html += npField('單品重量', it, 'weight', i, 'text');
+        html += npField('單品規格', it, 'dimensions', i, 'text');
+        html += npField('陳列位置', it, 'displayLocation', i, 'text');
+        html += npField('目標客層', it, 'targetCustomer', i, 'text');
+        html += npField('PMA(中)', it, 'pma', i, 'text');
+        html += '<div style="grid-column:1/3;"><label style="font-size:12px; color:#6b7280;">引進理由：</label><textarea onchange="updateNpItem('+i+',\'reasons\',this.value)" style="width:100%; padding:6px; border:1px solid #ccc; border-radius:4px; min-height:60px;">'+(it.reasons||'')+'</textarea></div>';
+        html += '</div>';
+    } else {
+        html += '<div style="display:flex; gap:14px; flex-wrap:wrap;">';
+        // 照片
+        html += '<div style="text-align:center; min-width:120px;">';
+        if (it.photo) html += '<img src="'+it.photo+'" style="max-width:120px; max-height:120px; object-fit:contain; border-radius:6px;">';
+        html += '</div>';
+        // 資訊
+        html += '<div style="flex:1; min-width:240px;">';
+        html += '<div style="font-size:17px; font-weight:bold; color:#dc2626; margin-bottom:6px;">'+(it.name||'')+'</div>';
+        if (it.barcode) html += '<div style="margin-bottom:6px;"><svg class="rc-barcode" data-code="'+it.barcode+'"></svg><div style="font-family:monospace; font-size:11px; color:#6b7280;">'+it.barcode+'</div></div>';
+        html += '<table style="width:100%; font-size:12px; border-collapse:collapse;">';
+        html += npViewRow('品號', it.code) + npViewRow('零售價', (it.retailPrice||'')+' / '+(it.retailUnit||''));
+        html += npViewRow('商品等級', it.grade) + npViewRow('門市最低訂貨倍數', it.minOrder);
+        html += npViewRow('包裝入數', it.packQty) + npViewRow('保存期限', it.shelfLife);
+        html += npViewRow('單品重量', it.weight) + npViewRow('單品規格', it.dimensions);
+        html += npViewRow('陳列位置', it.displayLocation) + npViewRow('目標客層', it.targetCustomer);
+        html += npViewRow('PMA(中)', it.pma);
+        html += '</table>';
+        if (it.reasons) html += '<div style="margin-top:6px; font-size:12px; background:#fef9c3; padding:6px; border-radius:4px; white-space:pre-wrap;"><strong>引進理由：</strong><br>'+it.reasons+'</div>';
+        html += '</div></div>';
+    }
+    html += '</div>';
+    return html;
+}
+
+function npField(label, it, field, i, type, span) {
+    var s = span ? 'grid-column:'+span+';' : '';
+    return '<div style="'+s+'"><label style="font-size:12px; color:#6b7280;">'+label+'：</label><input type="'+type+'" value="'+(it[field]||'').toString().replace(/"/g,'&quot;')+'" onchange="updateNpItem('+i+',\''+field+'\',this.value)" style="width:100%; padding:6px; border:1px solid #ccc; border-radius:4px;"></div>';
+}
+
+function npViewRow(label, val) {
+    return '<tr><td style="padding:3px 6px; border:1px solid #eee; background:#f9fafb; font-weight:bold; white-space:nowrap;">'+label+'</td><td style="padding:3px 6px; border:1px solid #eee;">'+(val||'')+'</td></tr>';
+}
+
+function addNpItem() {
+    if (!_npCurrent.items) _npCurrent.items = [];
+    _npCurrent.items.push({ photo:'', name:'', code:'', barcode:'', retailPrice:'', retailUnit:'', grade:'基本型商品', minOrder:'1', packQty:'', shelfLife:'', weight:'', dimensions:'', displayLocation:'', targetCustomer:'', pma:'', reasons:'' });
+    renderNpDetail();
+    var content = document.getElementById('npDetailContent');
+    if (content) content.scrollTop = content.scrollHeight;
+}
+
+function updateNpItem(idx, field, val) {
+    if (_npCurrent.items && _npCurrent.items[idx]) {
+        _npCurrent.items[idx][field] = val;
+        if (field === 'barcode') renderNpDetail();
+    }
+}
+
+function deleteNpItem(idx) {
+    if (_npCurrent.items) { _npCurrent.items.splice(idx,1); renderNpDetail(); }
+}
+
+function uploadNpPhoto(idx, input) {
+    var file = input.files[0]; if (!file) return;
+    var reader = new FileReader();
+    reader.onload = function(e) {
+        var img = new Image();
+        img.onload = function() {
+            var canvas = document.createElement('canvas');
+            var scale = Math.min(1, 400/img.width);
+            canvas.width = img.width*scale; canvas.height = img.height*scale;
+            canvas.getContext('2d').drawImage(img,0,0,canvas.width,canvas.height);
+            _npCurrent.items[idx].photo = canvas.toDataURL('image/jpeg',0.7);
+            renderNpDetail();
+            showNotif('📷 已上傳商品照片');
+        };
+        img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+}
+
+function saveNpCampaign() {
+    var c = _npCurrent; if (!c) return;
+    c.orderStartDate = document.getElementById('npOrderDate').value;
+    var camps = loadData('newProductCampaigns', {});
+    camps[c.id] = c;
+    saveData('newProductCampaigns', camps);
+    showNotif('💾 已儲存上市新品檔期');
+    logAction('newProducts', '儲存週五上市新品：'+(c.title||''));
+    closeNpDetail();
+}
+
+function closeNpDetail() {
+    document.getElementById('npDetailOverlay').style.display = 'none';
+    _npCurrent = null;
+    renderNpList();
+}
+
+function deleteNpCampaign(id) {
+    var camps = loadData('newProductCampaigns', {});
+    if (!camps[id]) return;
+    showConfirmDelete('刪除上市檔期？', '<strong>'+(camps[id].title||'')+'</strong><br>無法復原！', function() {
+        delete camps[id]; saveData('newProductCampaigns', camps); renderNpList(); showNotif('🗑️ 已刪除');
+    });
+}
+
+
 
 function renderVendorList() {
     var vendors = loadVendors();
@@ -14455,6 +14994,8 @@ var BACKUP_KEYS = [
     'vendors',
     'returnCampaigns',
     'returnSubmissions',
+    'marketingCampaigns',
+    'newProductCampaigns',
     'inventoryReports',
     'logs',
     'systemSettings',
