@@ -1272,6 +1272,11 @@ input[type="time"]::-webkit-datetime-edit-minute-field {
                 <div class="submenu-item" onclick="goToPage('productLibrary','menu-daily-inv')">📋 條碼商品庫</div>
             </div>
         </div>
+        <div class="menu-item" id="menu-biweekly">📰 雙週刊資訊 ▼
+            <div class="submenu">
+                <div class="submenu-item" onclick="goToPage('returnCampaign','menu-biweekly')">📦 檔期退貨</div>
+            </div>
+        </div>
         <div class="menu-item" id="menu-system">⚙️ 系統管理 ▼
             <div class="submenu">
                 <div class="submenu-item" onclick="goToPage('storeManagement','menu-system')">🏬 門市管理</div>
@@ -2702,7 +2707,79 @@ input[type="time"]::-webkit-datetime-edit-minute-field {
         </div>
     </div>
     
-    <!-- 🏢 進貨廠商管理 -->
+    <!-- 📦 檔期退貨（雙週刊）-->
+    <div id="page-returnCampaign" class="page-content hidden">
+        <div class="breadcrumb">🏠 <a onclick="showWorkList()">工作清單</a> &gt; 📰 雙週刊資訊 &gt; <strong>📦 檔期退貨</strong></div>
+        <div class="main-content">
+            <div class="work-list-panel">
+                <div class="panel-header" style="display:flex; justify-content:space-between; flex-wrap:wrap; gap:8px; align-items:center;">
+                    <h3>📦 檔期退貨（停售商品）</h3>
+                    <div id="rcAdminToolbar" style="display:none; gap:6px; flex-wrap:wrap;">
+                        <button class="btn-confirm" style="padding:6px 14px; font-size:13px;" onclick="openRcEditor()">➕ 新增檔期</button>
+                    </div>
+                </div>
+                <div class="panel-body">
+                    <div class="alert-box info" style="margin-bottom:12px;" id="rcRoleHint"></div>
+                    <div id="rcCampaignList"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 檔期編輯/檢視 全螢幕 -->
+    <div id="rcDetailOverlay" style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:#f3f4f6; z-index:9000; overflow:auto;">
+        <div style="position:sticky; top:0; background:#dc2626; color:white; padding:10px 14px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;" class="no-print">
+            <span style="font-weight:bold; font-size:16px;" id="rcDetailTitle">停售商品</span>
+            <div style="display:flex; gap:6px; flex-wrap:wrap;">
+                <button id="rcSaveBtn" onclick="saveRcCampaign()" style="display:none; padding:6px 14px; background:#10b981; color:white; border:0; border-radius:4px; cursor:pointer; font-size:13px;">💾 儲存檔期</button>
+                <button id="rcSubmitBtn" onclick="submitRcReturn()" style="display:none; padding:6px 14px; background:#f59e0b; color:white; border:0; border-radius:4px; cursor:pointer; font-size:13px;">📤 送出退貨數量</button>
+                <button onclick="printRcCampaign()" style="padding:6px 14px; background:#3b82f6; color:white; border:0; border-radius:4px; cursor:pointer; font-size:13px;">🖨️ 列印</button>
+                <button onclick="closeRcDetail()" style="padding:6px 14px; background:#374151; color:white; border:0; border-radius:4px; cursor:pointer; font-size:13px;">✕ 關閉</button>
+            </div>
+        </div>
+        <div id="rcDetailContent" style="padding:16px; max-width:1000px; margin:0 auto;"></div>
+    </div>
+    
+    <!-- 商品項目編輯 Modal（admin）-->
+    <div id="rcItemModal" class="modal-overlay hidden">
+        <div class="modal-box" style="max-width:460px;">
+            <div class="modal-header">
+                <h3>➕ 新增退貨商品</h3>
+                <button onclick="closeRcItemModal()" style="background:none;border:0;font-size:22px;cursor:pointer;">×</button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="rcItemEditIdx" value="-1">
+                <div class="form-row" style="flex-direction:column; align-items:stretch; gap:4px;">
+                    <label style="font-weight:bold; font-size:13px;">商品類別：</label>
+                    <input type="text" id="rcItemCategory" placeholder="如 健美機能品 / 糖果 / 零食" style="padding:8px; border:1px solid #999; border-radius:4px;">
+                </div>
+                <div class="form-row" style="flex-direction:column; align-items:stretch; gap:4px; margin-top:8px;">
+                    <label style="font-weight:bold; font-size:13px;">品號：</label>
+                    <input type="text" id="rcItemCode" placeholder="如 308205" style="padding:8px; border:1px solid #999; border-radius:4px; font-family:monospace;">
+                </div>
+                <div class="form-row" style="flex-direction:column; align-items:stretch; gap:4px; margin-top:8px;">
+                    <label style="font-weight:bold; font-size:13px;">品名：</label>
+                    <input type="text" id="rcItemName" placeholder="如 明治即攻元氣機能飲-胺基酸" style="padding:8px; border:1px solid #999; border-radius:4px;">
+                </div>
+                <div class="form-row" style="flex-direction:column; align-items:stretch; gap:4px; margin-top:8px;">
+                    <label style="font-weight:bold; font-size:13px;">條碼：</label>
+                    <div style="display:flex; gap:6px;">
+                        <input type="text" id="rcItemBarcode" placeholder="如 4902777379784" style="flex:1; padding:8px; border:1px solid #999; border-radius:4px; font-family:monospace;">
+                        <button onclick="rcScanBarcode()" style="padding:8px 12px; background:#8b5cf6; color:white; border:0; border-radius:4px; cursor:pointer;">📷</button>
+                    </div>
+                </div>
+                <div style="display:flex; gap:8px; margin-top:8px;">
+                    <div style="flex:1;"><label style="font-weight:bold; font-size:13px;">零售(本)：</label><input type="number" id="rcItemRetailBox" placeholder="59" style="width:100%; padding:8px; border:1px solid #999; border-radius:4px;"></div>
+                    <div style="flex:1;"><label style="font-weight:bold; font-size:13px;">零售(贈)：</label><input type="number" id="rcItemRetailGift" placeholder="59" style="width:100%; padding:8px; border:1px solid #999; border-radius:4px;"></div>
+                </div>
+            </div>
+            <div class="modal-footer" style="display:flex; gap:8px; justify-content:flex-end; padding:12px;">
+                <button class="btn-secondary" onclick="closeRcItemModal()">取消</button>
+                <button class="btn-confirm" onclick="saveRcItem()">💾 加入</button>
+            </div>
+        </div>
+    </div>
+    
     <div id="page-vendorManagement" class="page-content hidden">
         <div class="breadcrumb">🏠 <a onclick="showWorkList()">工作清單</a> &gt; ⚙️ 系統管理 &gt; <strong>🏢 進貨廠商管理</strong></div>
         <div class="main-content">
@@ -4378,6 +4455,7 @@ var PERMISSION_FEATURES = [
     { group: '⚙️ 系統管理', items: [
         { id: 'storeManagement',    name: '🏬 門市管理' },
         { id: 'vendorManagement',   name: '🏢 進貨廠商管理' },
+        { id: 'returnCampaign',     name: '📦 檔期退貨' },
         { id: 'accountManagement',  name: '👤 帳號管理' },
         { id: 'permissionSettings', name: '🔐 權限設定' },
         { id: 'systemParams',       name: '⚙️ 系統參數' },
@@ -4831,6 +4909,7 @@ function goToPage(pageName, menuId) {
     else if (pageName === 'mySalary') renderMySalary();
     else if (pageName === 'storeManagement') renderStoreList();
     else if (pageName === 'vendorManagement') initVendorManagement();
+    else if (pageName === 'returnCampaign') initReturnCampaign();
     
     // 紀錄訪問日誌
     logAction('view', pageName);
@@ -6354,6 +6433,378 @@ var defaultVendors = [
 
 function loadVendors() {
     return loadData('vendors', defaultVendors);
+}
+
+// ============= 📦 檔期退貨（雙週刊）=============
+var _rcCurrentCampaign = null;
+var _rcMode = 'view';
+var _rcReturnQty = {};
+
+function initReturnCampaign() {
+    var isAdmin = (currentUser && currentUser.role === 'admin');
+    var toolbar = document.getElementById('rcAdminToolbar');
+    if (toolbar) toolbar.style.display = isAdmin ? 'flex' : 'none';
+    
+    var hint = document.getElementById('rcRoleHint');
+    if (hint) {
+        hint.innerHTML = isAdmin
+            ? '💡 <strong>管理員</strong>：點「➕ 新增檔期」建立停售退貨清單，發布後各門市即可登入處理退貨數量。'
+            : '💡 <strong>門市端</strong>：點下方檔期，填寫各商品退貨數量後送出。請於退貨期限內完成。';
+    }
+    
+    renderRcCampaignList();
+}
+
+function renderRcCampaignList() {
+    var campaigns = loadData('returnCampaigns', {});
+    var keys = Object.keys(campaigns).sort(function(a, b) {
+        return (campaigns[b].createdAt || '').localeCompare(campaigns[a].createdAt || '');
+    });
+    
+    var container = document.getElementById('rcCampaignList');
+    if (!container) return;
+    
+    if (keys.length === 0) {
+        container.innerHTML = '<div style="text-align:center; padding:40px; color:#9ca3af;">📭 目前無檔期退貨資料' + 
+            ((currentUser && currentUser.role === 'admin') ? '<br>點「➕ 新增檔期」開始建立' : '') + '</div>';
+        return;
+    }
+    
+    var isAdmin = (currentUser && currentUser.role === 'admin');
+    var submissions = loadData('returnSubmissions', {});
+    var mySid = getUserStoreId();
+    
+    var html = '';
+    for (var i = 0; i < keys.length; i++) {
+        var c = campaigns[keys[i]];
+        var itemCount = (c.items || []).length;
+        
+        var now = new Date();
+        var endDate = c.returnDateEnd ? new Date(c.returnDateEnd + 'T23:59:59') : null;
+        var expired = endDate && now > endDate;
+        var statusBadge = expired 
+            ? '<span class="status-tag" style="background:#fee2e2;color:#991b1b;">已逾期</span>'
+            : '<span class="status-tag status-done">可退貨</span>';
+        
+        var submitInfo = '';
+        if (!isAdmin && mySid) {
+            var subKey = keys[i] + '_' + mySid;
+            if (submissions[subKey] && submissions[subKey].submittedAt) {
+                var totalQty = 0;
+                var q = submissions[subKey].quantities || {};
+                for (var qk in q) totalQty += parseInt(q[qk]) || 0;
+                submitInfo = '<span class="status-tag" style="background:#dcfce7;color:#166534;">✅ 已送出 ' + totalQty + ' 件</span>';
+            } else {
+                submitInfo = '<span class="status-tag" style="background:#fef3c7;color:#92400e;">⏳ 待處理</span>';
+            }
+        }
+        
+        html += '<div style="background:white; border:2px solid #e5e7eb; border-radius:10px; padding:14px; margin-bottom:10px; cursor:pointer;" onclick="openRcCampaign(\'' + keys[i] + '\')">';
+        html += '<div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:6px;">';
+        html += '<div>';
+        html += '<div style="font-size:16px; font-weight:bold; color:#dc2626;">📦 ' + (c.title || '停售商品') + '</div>';
+        html += '<div style="font-size:12px; color:#6b7280; margin-top:2px;">' + (c.category || '') + '</div>';
+        html += '<div style="font-size:12px; color:#374151; margin-top:4px;">🗓️ 退貨期間：' + (c.returnDateStart || '?') + ' ~ ' + (c.returnDateEnd || '?') + '</div>';
+        html += '<div style="font-size:12px; color:#6b7280; margin-top:2px;">📋 共 ' + itemCount + ' 項商品</div>';
+        html += '</div>';
+        html += '<div style="display:flex; flex-direction:column; gap:4px; align-items:flex-end;">' + statusBadge + submitInfo + '</div>';
+        html += '</div>';
+        
+        if (isAdmin) {
+            html += '<div style="margin-top:8px; display:flex; gap:6px; flex-wrap:wrap;" onclick="event.stopPropagation();">';
+            html += '<button onclick="openRcCampaign(\'' + keys[i] + '\')" style="padding:5px 12px; background:#3b82f6; color:white; border:0; border-radius:4px; cursor:pointer; font-size:12px;">✏️ 編輯</button>';
+            html += '<button onclick="viewRcSubmissions(\'' + keys[i] + '\')" style="padding:5px 12px; background:#10b981; color:white; border:0; border-radius:4px; cursor:pointer; font-size:12px;">📊 各店退貨統計</button>';
+            html += '<button onclick="deleteRcCampaign(\'' + keys[i] + '\')" style="padding:5px 12px; background:#ef4444; color:white; border:0; border-radius:4px; cursor:pointer; font-size:12px;">🗑️</button>';
+            html += '</div>';
+        }
+        html += '</div>';
+    }
+    container.innerHTML = html;
+}
+
+function openRcEditor() {
+    _rcMode = 'edit';
+    _rcCurrentCampaign = {
+        id: 'rc_' + Date.now(),
+        title: '停售商品',
+        category: '※停售-可退貨(捷盟常溫)',
+        returnDateStart: '',
+        returnDateEnd: '',
+        notes: '※請門市每檔期務必落實商品挑退，需於雙週刊上退貨時間內完成，逾期則無法退貨。\n※挑退貨商品時，請核對商品品名及照片是否正確，若有不符的情況，請門市以商品品名做為判別退貨商品的標準。',
+        items: [],
+        createdAt: new Date().toISOString(),
+        createdBy: currentUser ? currentUser.id : 'admin'
+    };
+    renderRcDetail();
+}
+
+function openRcCampaign(id) {
+    var campaigns = loadData('returnCampaigns', {});
+    var c = campaigns[id];
+    if (!c) return;
+    _rcCurrentCampaign = JSON.parse(JSON.stringify(c));
+    _rcMode = (currentUser && currentUser.role === 'admin') ? 'edit' : 'return';
+    renderRcDetail();
+}
+
+function renderRcDetail() {
+    var c = _rcCurrentCampaign;
+    if (!c) return;
+    
+    document.getElementById('rcDetailTitle').textContent = c.title || '停售商品';
+    document.getElementById('rcSaveBtn').style.display = (_rcMode === 'edit') ? 'inline-block' : 'none';
+    document.getElementById('rcSubmitBtn').style.display = (_rcMode === 'return') ? 'inline-block' : 'none';
+    
+    var isEdit = (_rcMode === 'edit');
+    var html = '';
+    
+    html += '<div style="background:white; padding:16px; border-radius:10px; margin-bottom:12px;">';
+    html += '<h1 style="text-align:center; color:#dc2626; margin:0 0 12px 0;">' + 
+            (isEdit ? '<input type="text" id="rcTitle" value="' + (c.title||'') + '" style="text-align:center; border:1px dashed #ccc; padding:4px; font-size:24px; font-weight:bold; color:#dc2626; width:80%;">' : (c.title || '停售商品')) + '</h1>';
+    
+    if (isEdit) {
+        html += '<div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:10px;">';
+        html += '<div><label style="font-size:12px; color:#6b7280;">類別標題：</label><input type="text" id="rcCategory" value="' + (c.category||'') + '" style="width:100%; padding:6px; border:1px solid #ccc; border-radius:4px;"></div>';
+        html += '<div></div>';
+        html += '<div><label style="font-size:12px; color:#6b7280;">退貨開始日：</label><input type="date" id="rcDateStart" value="' + (c.returnDateStart||'') + '" style="width:100%; padding:6px; border:1px solid #ccc; border-radius:4px;"></div>';
+        html += '<div><label style="font-size:12px; color:#6b7280;">退貨結束日：</label><input type="date" id="rcDateEnd" value="' + (c.returnDateEnd||'') + '" style="width:100%; padding:6px; border:1px solid #ccc; border-radius:4px;"></div>';
+        html += '</div>';
+        html += '<div><label style="font-size:12px; color:#6b7280;">注意事項：</label><textarea id="rcNotes" style="width:100%; padding:6px; border:1px solid #ccc; border-radius:4px; min-height:70px;">' + (c.notes||'') + '</textarea></div>';
+    } else {
+        html += '<div style="color:#dc2626; font-size:13px; line-height:1.7; white-space:pre-wrap;">' + (c.notes||'') + '</div>';
+        html += '<div style="color:#1e40af; font-weight:bold; margin-top:8px;">🗓️ 退貨時間：' + (c.returnDateStart||'?') + ' ~ ' + (c.returnDateEnd||'?') + '</div>';
+        html += '<div style="font-weight:bold; font-size:18px; margin-top:8px;">' + (c.category||'') + '</div>';
+    }
+    html += '</div>';
+    
+    html += '<div style="background:white; padding:12px; border-radius:10px; overflow-x:auto;">';
+    if (isEdit) {
+        html += '<button onclick="openRcItemModal()" style="margin-bottom:10px; padding:8px 16px; background:#10b981; color:white; border:0; border-radius:6px; cursor:pointer; font-weight:bold;">➕ 新增退貨商品</button>';
+    }
+    html += '<table style="width:100%; border-collapse:collapse; font-size:13px; min-width:600px;">';
+    html += '<thead><tr style="background:#374151; color:white;">';
+    html += '<th style="padding:8px; border:1px solid #ccc;">品號</th>';
+    html += '<th style="padding:8px; border:1px solid #ccc;">品名</th>';
+    html += '<th style="padding:8px; border:1px solid #ccc;">條碼</th>';
+    html += '<th style="padding:8px; border:1px solid #ccc;">零售(本)<br>零售(贈)</th>';
+    html += '<th style="padding:8px; border:1px solid #ccc; width:90px;">數量</th>';
+    if (isEdit) html += '<th style="padding:8px; border:1px solid #ccc; width:50px;">操作</th>';
+    html += '</tr></thead><tbody>';
+    
+    var submissions = loadData('returnSubmissions', {});
+    var mySid = getUserStoreId();
+    var subKey = c.id + '_' + mySid;
+    var myQty = (submissions[subKey] && submissions[subKey].quantities) ? submissions[subKey].quantities : {};
+    
+    if (!c.items || c.items.length === 0) {
+        html += '<tr><td colspan="' + (isEdit?6:5) + '" style="text-align:center; padding:20px; color:#9ca3af;">尚無商品</td></tr>';
+    } else {
+        for (var i = 0; i < c.items.length; i++) {
+            var it = c.items[i];
+            html += '<tr>';
+            html += '<td style="padding:6px; border:1px solid #ccc; text-align:center;"><div style="font-size:11px; color:#6b7280;">' + (it.category||'') + '</div><strong>' + (it.code||'') + '</strong></td>';
+            html += '<td style="padding:6px; border:1px solid #ccc;">' + (it.name||'') + '</td>';
+            html += '<td style="padding:6px; border:1px solid #ccc; font-family:monospace; font-size:11px;">' + (it.barcode||'') + '</td>';
+            html += '<td style="padding:6px; border:1px solid #ccc; text-align:center;">' + (it.retailBox||0) + '<br>' + (it.retailGift||0) + '</td>';
+            if (_rcMode === 'return') {
+                html += '<td style="padding:6px; border:1px solid #ccc;"><input type="number" min="0" value="' + (myQty[it.code]||'') + '" onchange="updateRcQty(\'' + it.code + '\',this.value)" style="width:100%; padding:4px; border:1px solid #999; border-radius:4px; text-align:center;"></td>';
+            } else {
+                html += '<td style="padding:6px; border:1px solid #ccc; text-align:center; background:#f9fafb;"></td>';
+            }
+            if (isEdit) {
+                html += '<td style="padding:6px; border:1px solid #ccc; text-align:center;"><button onclick="deleteRcItem(' + i + ')" style="padding:3px 8px; background:#ef4444; color:white; border:0; border-radius:4px; cursor:pointer; font-size:11px;">🗑️</button></td>';
+            }
+            html += '</tr>';
+        }
+    }
+    html += '</tbody></table></div>';
+    
+    document.getElementById('rcDetailContent').innerHTML = html;
+    document.getElementById('rcDetailOverlay').style.display = 'block';
+    
+    _rcReturnQty = JSON.parse(JSON.stringify(myQty));
+}
+
+function updateRcQty(code, val) {
+    _rcReturnQty[code] = parseInt(val) || 0;
+}
+
+function closeRcDetail() {
+    document.getElementById('rcDetailOverlay').style.display = 'none';
+    _rcCurrentCampaign = null;
+    renderRcCampaignList();
+}
+
+function saveRcCampaign() {
+    var c = _rcCurrentCampaign;
+    if (!c) return;
+    
+    c.title = document.getElementById('rcTitle').value.trim() || '停售商品';
+    c.category = document.getElementById('rcCategory').value.trim();
+    c.returnDateStart = document.getElementById('rcDateStart').value;
+    c.returnDateEnd = document.getElementById('rcDateEnd').value;
+    c.notes = document.getElementById('rcNotes').value;
+    
+    if (!c.items || c.items.length === 0) {
+        if (!confirm('⚠️ 尚未新增任何商品，確定儲存空檔期？')) return;
+    }
+    
+    var campaigns = loadData('returnCampaigns', {});
+    campaigns[c.id] = c;
+    saveData('returnCampaigns', campaigns);
+    
+    showNotif('💾 已儲存檔期：' + c.title);
+    logAction('returnCampaign', '儲存檔期退貨：' + c.title);
+    closeRcDetail();
+}
+
+function submitRcReturn() {
+    var c = _rcCurrentCampaign;
+    if (!c) return;
+    
+    var mySid = getUserStoreId();
+    var stores = loadData('stores', defaultStores);
+    var myStore = stores.find(function(s){ return s.id === mySid; });
+    
+    if (!mySid && currentUser.role !== 'admin') {
+        return alert('⚠️ 您的帳號未指定所屬門市，無法送出退貨。請聯絡管理員設定。');
+    }
+    
+    var totalQty = 0;
+    for (var k in _rcReturnQty) totalQty += parseInt(_rcReturnQty[k]) || 0;
+    
+    if (totalQty === 0) {
+        return alert('⚠️ 尚未填寫任何退貨數量');
+    }
+    
+    if (!confirm('📤 確定送出退貨數量？\n\n門市：' + (myStore ? myStore.name : '?') + '\n總退貨件數：' + totalQty + ' 件\n\n送出後可再次修改。')) return;
+    
+    var submissions = loadData('returnSubmissions', {});
+    var subKey = c.id + '_' + (mySid || 'admin');
+    submissions[subKey] = {
+        campaignId: c.id,
+        campaignTitle: c.title,
+        storeId: mySid || '',
+        storeCode: myStore ? myStore.code : '',
+        storeName: myStore ? myStore.name : (currentUser.name || ''),
+        quantities: JSON.parse(JSON.stringify(_rcReturnQty)),
+        submittedAt: new Date().toISOString(),
+        submittedBy: currentUser.id
+    };
+    saveData('returnSubmissions', submissions);
+    
+    showNotif('📤 已送出退貨數量（' + totalQty + ' 件）');
+    logAction('returnCampaign', '送出檔期退貨：' + c.title + '（' + totalQty + '件）');
+    closeRcDetail();
+}
+
+function deleteRcCampaign(id) {
+    var campaigns = loadData('returnCampaigns', {});
+    var c = campaigns[id];
+    if (!c) return;
+    showConfirmDelete('刪除檔期？', '<strong>' + (c.title||'') + '</strong><br>連同各店退貨記錄一併刪除，無法復原！', function() {
+        delete campaigns[id];
+        saveData('returnCampaigns', campaigns);
+        var subs = loadData('returnSubmissions', {});
+        for (var k in subs) {
+            if (subs[k].campaignId === id) delete subs[k];
+        }
+        saveData('returnSubmissions', subs);
+        renderRcCampaignList();
+        showNotif('🗑️ 已刪除檔期');
+    });
+}
+
+function openRcItemModal() {
+    document.getElementById('rcItemEditIdx').value = '-1';
+    document.getElementById('rcItemCategory').value = '';
+    document.getElementById('rcItemCode').value = '';
+    document.getElementById('rcItemName').value = '';
+    document.getElementById('rcItemBarcode').value = '';
+    document.getElementById('rcItemRetailBox').value = '';
+    document.getElementById('rcItemRetailGift').value = '';
+    document.getElementById('rcItemModal').classList.remove('hidden');
+}
+
+function closeRcItemModal() {
+    document.getElementById('rcItemModal').classList.add('hidden');
+}
+
+function saveRcItem() {
+    var code = document.getElementById('rcItemCode').value.trim();
+    var name = document.getElementById('rcItemName').value.trim();
+    if (!code || !name) return alert('⚠️ 請至少填寫品號與品名');
+    
+    var item = {
+        category: document.getElementById('rcItemCategory').value.trim(),
+        code: code,
+        name: name,
+        barcode: document.getElementById('rcItemBarcode').value.trim(),
+        retailBox: parseInt(document.getElementById('rcItemRetailBox').value) || 0,
+        retailGift: parseInt(document.getElementById('rcItemRetailGift').value) || 0
+    };
+    
+    if (!_rcCurrentCampaign.items) _rcCurrentCampaign.items = [];
+    _rcCurrentCampaign.items.push(item);
+    
+    closeRcItemModal();
+    renderRcDetail();
+    showNotif('➕ 已加入：' + name);
+}
+
+function deleteRcItem(idx) {
+    if (!_rcCurrentCampaign || !_rcCurrentCampaign.items) return;
+    _rcCurrentCampaign.items.splice(idx, 1);
+    renderRcDetail();
+}
+
+function rcScanBarcode() {
+    if (typeof Html5Qrcode === 'undefined') return alert('⚠️ 掃描功能未載入');
+    window._scanMode = 'rcItem';
+    document.getElementById('barcodeScannerModal').classList.remove('hidden');
+    if (typeof _currentScanner !== 'undefined' && _currentScanner) {
+        try { _currentScanner.stop().catch(function(){}); } catch(e){}
+    }
+    setTimeout(function() {
+        _currentScanner = new Html5Qrcode("barcodeReader");
+        _currentScanner.start({ facingMode: 'environment' }, { fps: 10, qrbox: { width: 250, height: 120 } },
+            function(decodedText) {
+                document.getElementById('rcItemBarcode').value = decodedText;
+                closeBarcodeScanner();
+                window._scanMode = null;
+                showNotif('📷 已掃描條碼：' + decodedText);
+            }, function(){});
+    }, 200);
+}
+
+function viewRcSubmissions(id) {
+    var campaigns = loadData('returnCampaigns', {});
+    var c = campaigns[id];
+    if (!c) return;
+    
+    var submissions = loadData('returnSubmissions', {});
+    var related = [];
+    for (var k in submissions) {
+        if (submissions[k].campaignId === id) related.push(submissions[k]);
+    }
+    
+    if (related.length === 0) {
+        return alert('📭 尚無任何門市送出退貨數量');
+    }
+    
+    var msg = '📊 ' + c.title + ' - 各店退貨統計\n\n';
+    for (var i = 0; i < related.length; i++) {
+        var sub = related[i];
+        var total = 0;
+        for (var qk in sub.quantities) total += parseInt(sub.quantities[qk]) || 0;
+        msg += '🏬 ' + (sub.storeName || '?') + '：' + total + ' 件（' + 
+               (sub.submittedAt ? sub.submittedAt.substring(0,10) : '') + '）\n';
+    }
+    alert(msg);
+}
+
+function printRcCampaign() {
+    window.print();
 }
 
 // ============= 🏢 進貨廠商管理頁 =============
@@ -13657,6 +14108,8 @@ var BACKUP_KEYS = [
     'productCodes',
     'faceProfiles',
     'vendors',
+    'returnCampaigns',
+    'returnSubmissions',
     'inventoryReports',
     'logs',
     'systemSettings',
