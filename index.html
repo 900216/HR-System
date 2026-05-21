@@ -7,6 +7,7 @@
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@vladmandic/face-api/dist/face-api.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
 body { font-family: "Microsoft JhengHei", "微軟正黑體", -apple-system, sans-serif; background: #f0f0f0; }
@@ -2749,9 +2750,22 @@ input[type="time"]::-webkit-datetime-edit-minute-field {
             </div>
             <div class="modal-body">
                 <input type="hidden" id="rcItemEditIdx" value="-1">
+                
+                <!-- 🆕 快速掃碼帶入 -->
+                <div style="background:linear-gradient(135deg,#ecfdf5,#d1fae5); padding:12px; border-radius:8px; margin-bottom:12px; border:2px solid #10b981;">
+                    <div style="font-weight:bold; color:#065f46; margin-bottom:6px; font-size:13px;">📷 掃碼快速帶入（推薦）</div>
+                    <div style="font-size:11px; color:#047857; margin-bottom:8px;">刷一下商品條碼，自動帶入品名/價格（若條碼商品庫有資料）</div>
+                    <button onclick="rcScanBarcode()" style="width:100%; padding:12px; background:linear-gradient(to bottom,#10b981,#059669); color:white; border:0; border-radius:6px; cursor:pointer; font-size:15px; font-weight:bold;">📷 掃描商品條碼</button>
+                </div>
+                
+                <div style="text-align:center; color:#9ca3af; font-size:12px; margin:8px 0;">— 或手動輸入 —</div>
+                
                 <div class="form-row" style="flex-direction:column; align-items:stretch; gap:4px;">
-                    <label style="font-weight:bold; font-size:13px;">商品類別：</label>
-                    <input type="text" id="rcItemCategory" placeholder="如 健美機能品 / 糖果 / 零食" style="padding:8px; border:1px solid #999; border-radius:4px;">
+                    <label style="font-weight:bold; font-size:13px;">條碼：</label>
+                    <div style="display:flex; gap:6px;">
+                        <input type="text" id="rcItemBarcode" placeholder="刷碼或輸入，如 4902777379784" oninput="rcOnBarcodeInput()" style="flex:1; padding:8px; border:1px solid #999; border-radius:4px; font-family:monospace;">
+                    </div>
+                    <div id="rcBarcodePreview" style="text-align:center; margin-top:4px;"></div>
                 </div>
                 <div class="form-row" style="flex-direction:column; align-items:stretch; gap:4px; margin-top:8px;">
                     <label style="font-weight:bold; font-size:13px;">品號：</label>
@@ -2762,20 +2776,22 @@ input[type="time"]::-webkit-datetime-edit-minute-field {
                     <input type="text" id="rcItemName" placeholder="如 明治即攻元氣機能飲-胺基酸" style="padding:8px; border:1px solid #999; border-radius:4px;">
                 </div>
                 <div class="form-row" style="flex-direction:column; align-items:stretch; gap:4px; margin-top:8px;">
-                    <label style="font-weight:bold; font-size:13px;">條碼：</label>
-                    <div style="display:flex; gap:6px;">
-                        <input type="text" id="rcItemBarcode" placeholder="如 4902777379784" style="flex:1; padding:8px; border:1px solid #999; border-radius:4px; font-family:monospace;">
-                        <button onclick="rcScanBarcode()" style="padding:8px 12px; background:#8b5cf6; color:white; border:0; border-radius:4px; cursor:pointer;">📷</button>
-                    </div>
+                    <label style="font-weight:bold; font-size:13px;">商品類別：</label>
+                    <input type="text" id="rcItemCategory" placeholder="如 健美機能品 / 糖果 / 零食" list="rcCategoryList" style="padding:8px; border:1px solid #999; border-radius:4px;">
+                    <datalist id="rcCategoryList">
+                        <option value="健美機能品"><option value="食材調味品"><option value="紙、生理用品">
+                        <option value="糖果"><option value="零食"><option value="飲料"><option value="冷藏"><option value="冷凍">
+                    </datalist>
                 </div>
                 <div style="display:flex; gap:8px; margin-top:8px;">
-                    <div style="flex:1;"><label style="font-weight:bold; font-size:13px;">零售(本)：</label><input type="number" id="rcItemRetailBox" placeholder="59" style="width:100%; padding:8px; border:1px solid #999; border-radius:4px;"></div>
+                    <div style="flex:1;"><label style="font-weight:bold; font-size:13px;">零售(本)：</label><input type="number" id="rcItemRetailBox" placeholder="59" oninput="document.getElementById('rcItemRetailGift').value=document.getElementById('rcItemRetailGift').value||this.value" style="width:100%; padding:8px; border:1px solid #999; border-radius:4px;"></div>
                     <div style="flex:1;"><label style="font-weight:bold; font-size:13px;">零售(贈)：</label><input type="number" id="rcItemRetailGift" placeholder="59" style="width:100%; padding:8px; border:1px solid #999; border-radius:4px;"></div>
                 </div>
             </div>
-            <div class="modal-footer" style="display:flex; gap:8px; justify-content:flex-end; padding:12px;">
+            <div class="modal-footer" style="display:flex; gap:8px; justify-content:flex-end; padding:12px; flex-wrap:wrap;">
                 <button class="btn-secondary" onclick="closeRcItemModal()">取消</button>
-                <button class="btn-confirm" onclick="saveRcItem()">💾 加入</button>
+                <button class="btn-primary" style="background:linear-gradient(to bottom,#8b5cf6,#7c3aed);" onclick="saveRcItem(true)">💾 加入並繼續</button>
+                <button class="btn-confirm" onclick="saveRcItem(false)">💾 加入並關閉</button>
             </div>
         </div>
     </div>
@@ -6604,7 +6620,12 @@ function renderRcDetail() {
             html += '<tr>';
             html += '<td style="padding:6px; border:1px solid #ccc; text-align:center;"><div style="font-size:11px; color:#6b7280;">' + (it.category||'') + '</div><strong>' + (it.code||'') + '</strong></td>';
             html += '<td style="padding:6px; border:1px solid #ccc;">' + (it.name||'') + '</td>';
-            html += '<td style="padding:6px; border:1px solid #ccc; font-family:monospace; font-size:11px;">' + (it.barcode||'') + '</td>';
+            // 🆕 真實條碼圖
+            if (it.barcode) {
+                html += '<td style="padding:6px; border:1px solid #ccc; text-align:center;"><svg class="rc-barcode" data-code="' + it.barcode + '"></svg><div style="font-family:monospace; font-size:10px; color:#6b7280;">' + it.barcode + '</div></td>';
+            } else {
+                html += '<td style="padding:6px; border:1px solid #ccc; text-align:center; color:#9ca3af; font-size:11px;">無條碼</td>';
+            }
             html += '<td style="padding:6px; border:1px solid #ccc; text-align:center;">' + (it.retailBox||0) + '<br>' + (it.retailGift||0) + '</td>';
             if (_rcMode === 'return') {
                 html += '<td style="padding:6px; border:1px solid #ccc;"><input type="number" min="0" value="' + (myQty[it.code]||'') + '" onchange="updateRcQty(\'' + it.code + '\',this.value)" style="width:100%; padding:4px; border:1px solid #999; border-radius:4px; text-align:center;"></td>';
@@ -6623,6 +6644,35 @@ function renderRcDetail() {
     document.getElementById('rcDetailOverlay').style.display = 'block';
     
     _rcReturnQty = JSON.parse(JSON.stringify(myQty));
+    
+    // 🆕 產生所有真實條碼圖
+    renderAllBarcodes();
+}
+
+// 🆕 渲染畫面上所有 .rc-barcode 條碼
+function renderAllBarcodes() {
+    if (typeof JsBarcode === 'undefined') return;
+    var els = document.querySelectorAll('.rc-barcode');
+    for (var i = 0; i < els.length; i++) {
+        var code = els[i].getAttribute('data-code');
+        if (!code) continue;
+        try {
+            // 自動判斷格式：13碼純數字=EAN13，否則 CODE128
+            var fmt = (/^\d{13}$/.test(code)) ? 'EAN13' : ((/^\d{12}$/.test(code)) ? 'UPC' : 'CODE128');
+            JsBarcode(els[i], code, {
+                format: fmt,
+                width: 1.6,
+                height: 45,
+                displayValue: false,
+                margin: 2
+            });
+        } catch (e) {
+            // 格式不符時退回 CODE128
+            try {
+                JsBarcode(els[i], code, { format: 'CODE128', width: 1.6, height: 45, displayValue: false, margin: 2 });
+            } catch (e2) {}
+        }
+    }
 }
 
 function updateRcQty(code, val) {
@@ -6723,6 +6773,8 @@ function openRcItemModal() {
     document.getElementById('rcItemBarcode').value = '';
     document.getElementById('rcItemRetailBox').value = '';
     document.getElementById('rcItemRetailGift').value = '';
+    var prev = document.getElementById('rcBarcodePreview');
+    if (prev) prev.innerHTML = '';
     document.getElementById('rcItemModal').classList.remove('hidden');
 }
 
@@ -6730,16 +6782,78 @@ function closeRcItemModal() {
     document.getElementById('rcItemModal').classList.add('hidden');
 }
 
-function saveRcItem() {
+// 🆕 條碼輸入時：即時預覽 + 自動帶入商品庫資料
+function rcOnBarcodeInput() {
+    var barcode = document.getElementById('rcItemBarcode').value.trim();
+    rcRenderBarcodePreview(barcode);
+    if (barcode.length >= 8) {
+        rcAutoFillFromLibrary(barcode);
+    }
+}
+
+// 即時預覽條碼圖
+function rcRenderBarcodePreview(barcode) {
+    var prev = document.getElementById('rcBarcodePreview');
+    if (!prev) return;
+    if (!barcode || barcode.length < 6 || typeof JsBarcode === 'undefined') {
+        prev.innerHTML = '';
+        return;
+    }
+    prev.innerHTML = '<svg id="rcPreviewSvg"></svg>';
+    try {
+        var fmt = (/^\d{13}$/.test(barcode)) ? 'EAN13' : ((/^\d{12}$/.test(barcode)) ? 'UPC' : 'CODE128');
+        JsBarcode('#rcPreviewSvg', barcode, { format: fmt, width: 1.6, height: 40, displayValue: true, fontSize: 12, margin: 2 });
+    } catch (e) {
+        try { JsBarcode('#rcPreviewSvg', barcode, { format: 'CODE128', width: 1.6, height: 40, displayValue: true, fontSize: 12, margin: 2 }); }
+        catch (e2) { prev.innerHTML = '<span style="font-size:11px; color:#dc2626;">⚠️ 條碼格式不符（仍可儲存）</span>'; }
+    }
+}
+
+// 🆕 從條碼商品庫自動帶入品名、價格、品號
+function rcAutoFillFromLibrary(barcode) {
+    var productCodes = loadData('productCodes', {});
+    // 比對 lastBarcode 或 品號前6碼
+    var matchedCode = null, matchedInfo = null;
+    for (var code in productCodes) {
+        if (!productCodes.hasOwnProperty(code)) continue;
+        var info = productCodes[code];
+        if (info.lastBarcode === barcode || barcode.indexOf(code) === 0) {
+            matchedCode = code;
+            matchedInfo = info;
+            break;
+        }
+    }
+    
+    if (matchedInfo) {
+        var nameEl = document.getElementById('rcItemName');
+        var codeEl = document.getElementById('rcItemCode');
+        var boxEl = document.getElementById('rcItemRetailBox');
+        var giftEl = document.getElementById('rcItemRetailGift');
+        // 只在空白時帶入，避免覆寫使用者輸入
+        if (!nameEl.value && matchedInfo.productName) nameEl.value = matchedInfo.productName;
+        if (!codeEl.value && matchedCode) codeEl.value = matchedCode;
+        if (!boxEl.value && matchedInfo.retailPrice) boxEl.value = matchedInfo.retailPrice;
+        if (!giftEl.value && matchedInfo.retailPrice) giftEl.value = matchedInfo.retailPrice;
+        showNotif('✨ 已從商品庫帶入：' + (matchedInfo.productName || matchedCode));
+    }
+}
+
+function saveRcItem(continueAdding) {
     var code = document.getElementById('rcItemCode').value.trim();
     var name = document.getElementById('rcItemName').value.trim();
-    if (!code || !name) return alert('⚠️ 請至少填寫品號與品名');
+    var barcode = document.getElementById('rcItemBarcode').value.trim();
+    
+    // 🆕 若有條碼但沒品號，用條碼前6碼當品號
+    if (!code && barcode.length >= 6) {
+        code = barcode.substring(0, 6);
+    }
+    if (!code || !name) return alert('⚠️ 請至少填寫品名（品號可由條碼自動產生）');
     
     var item = {
         category: document.getElementById('rcItemCategory').value.trim(),
         code: code,
         name: name,
-        barcode: document.getElementById('rcItemBarcode').value.trim(),
+        barcode: barcode,
         retailBox: parseInt(document.getElementById('rcItemRetailBox').value) || 0,
         retailGift: parseInt(document.getElementById('rcItemRetailGift').value) || 0
     };
@@ -6747,9 +6861,32 @@ function saveRcItem() {
     if (!_rcCurrentCampaign.items) _rcCurrentCampaign.items = [];
     _rcCurrentCampaign.items.push(item);
     
-    closeRcItemModal();
-    renderRcDetail();
+    // 🆕 同步寫入條碼商品庫（方便日後共用）
+    if (barcode) {
+        var productCodes = loadData('productCodes', {});
+        if (!productCodes[code]) {
+            productCodes[code] = {
+                productName: name,
+                retailPrice: item.retailBox,
+                lastBarcode: barcode,
+                lastUsed: new Date().toISOString()
+            };
+            saveData('productCodes', productCodes);
+        }
+    }
+    
     showNotif('➕ 已加入：' + name);
+    
+    if (continueAdding) {
+        // 連續新增：清空但保留 Modal 開啟，並重繪表格
+        renderRcDetail();
+        document.getElementById('rcItemModal').classList.remove('hidden');  // renderRcDetail 不會關 modal
+        openRcItemModal();  // 清空欄位
+        document.getElementById('rcItemBarcode').focus();
+    } else {
+        closeRcItemModal();
+        renderRcDetail();
+    }
 }
 
 function deleteRcItem(idx) {
@@ -6758,6 +6895,7 @@ function deleteRcItem(idx) {
     renderRcDetail();
 }
 
+// 掃條碼 → 自動帶入商品庫資料
 function rcScanBarcode() {
     if (typeof Html5Qrcode === 'undefined') return alert('⚠️ 掃描功能未載入');
     window._scanMode = 'rcItem';
@@ -6772,8 +6910,13 @@ function rcScanBarcode() {
                 document.getElementById('rcItemBarcode').value = decodedText;
                 closeBarcodeScanner();
                 window._scanMode = null;
-                showNotif('📷 已掃描條碼：' + decodedText);
+                // 確保 Modal 開啟
+                document.getElementById('rcItemModal').classList.remove('hidden');
+                rcRenderBarcodePreview(decodedText);
+                rcAutoFillFromLibrary(decodedText);
+                showNotif('📷 已掃描：' + decodedText);
             }, function(){});
+        if (typeof addScannerAimingLine === 'function') setTimeout(addScannerAimingLine, 300);
     }, 200);
 }
 
