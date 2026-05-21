@@ -3724,6 +3724,10 @@ input[type="time"]::-webkit-datetime-edit-minute-field {
                     <option value="locked">鎖定</option>
                 </select>
             </td></tr>
+            <tr><td class="label-col">所屬門市：</td><td>
+                <select id="acctStore"></select>
+                <div style="font-size:11px; color:#6b7280; margin-top:3px;">💡 店長/員工僅能看見所屬門市資料；系統管理員可看全部</div>
+            </td></tr>
         </table>
         <div style="text-align:center; margin-top:15px;">
             <button class="btn-confirm" onclick="saveAccount()">✅ 儲存</button>
@@ -3927,10 +3931,17 @@ function doLoginAs(user) {
 // 🆕 登入時自動同步
 function triggerLoginSync() {
     var enabled = localStorage.getItem('_cs_enabled') === '1';
-    if (!enabled) return;
+    if (!enabled) {
+        // 即使沒同步，也檢查本機待簽收調撥單
+        setTimeout(checkPendingTransfers, 1500);
+        return;
+    }
     
     var endpoint = (typeof getActiveSyncEndpoint === 'function') ? getActiveSyncEndpoint() : null;
-    if (!endpoint) return;
+    if (!endpoint) {
+        setTimeout(checkPendingTransfers, 1500);
+        return;
+    }
     
     // 顯示同步中提示
     showNotif('🔄 登入同步中...');
@@ -3945,10 +3956,46 @@ function triggerLoginSync() {
         startAutoPull();
     }
     
-    // 1.5 秒後提示完成
+    // 1.5 秒後提示完成 + 檢查待簽收調撥單
     setTimeout(function() {
         showNotif('✅ 已同步雲端最新資料');
+        checkPendingTransfers();
     }, 1800);
+}
+
+// 🆕 檢查待簽收的調撥單（本店為調入店但尚未簽收）
+function checkPendingTransfers() {
+    if (!currentUser) return;
+    var mySid = getUserStoreId();
+    var myCode = getUserStoreCode();
+    var isAdmin = canViewAllStores();
+    
+    var all = loadData('transferOrders', {});
+    var pending = [];
+    for (var k in all) {
+        if (!all.hasOwnProperty(k)) continue;
+        var r = all[k];
+        // 本店是調入店
+        var iAmIn = (r.inStoreId && r.inStoreId === mySid) || (myCode && String(r.inStoreCode) === String(myCode));
+        if ((isAdmin || iAmIn) && !r.inSignData) {
+            // 調入店尚未簽收
+            pending.push(r);
+        }
+    }
+    
+    if (pending.length > 0) {
+        var first = pending[0];
+        var msg = '📨 您有 ' + pending.length + ' 張調撥單待簽收！\n\n';
+        for (var i = 0; i < Math.min(pending.length, 5); i++) {
+            msg += '📥 ' + pending[i].orderNo + '（來自 ' + (pending[i].outStoreName || '?') + '，' + (pending[i].date || '') + '）\n';
+        }
+        if (pending.length > 5) msg += '...等共 ' + pending.length + ' 張\n';
+        msg += '\n請至「🔄 51-調撥單 → 調撥單歷史」查看並簽收。';
+        
+        // 用通知列 + 紅點提示
+        showNotif('📨 有 ' + pending.length + ' 張調撥單待簽收！');
+        setTimeout(function() { alert(msg); }, 1000);
+    }
 }
 
 // 🆕 登入畫面手動同步（換新裝置首次抓帳號/人臉用）
@@ -5013,13 +5060,21 @@ function renderScheduleTable() {
     // 門市下拉（重建 options，但保留目前選擇）
     var storeSel = document.getElementById('schedStore');
     if (storeSel) {
+        // 🔒 管理員看全部；店長/員工只看自家門市
         var activeStores = stores.filter(function(s) { return s.status !== 'closed'; });
+        if (!canViewAllStores()) {
+            var mySid = getUserStoreId();
+            if (mySid) {
+                activeStores = activeStores.filter(function(s) { return s.id === mySid; });
+                currentSchedStoreId = mySid;
+            }
+        }
         
         var selValue = storeSel.value;
         var validIds = activeStores.map(function(s) { return s.id; });
         
-        if (isEditor) {
-            // 管理員/店長：可切換
+        if (isEditor && canViewAllStores()) {
+            // 系統管理員：可切換全部門市
             if (selValue && validIds.indexOf(selValue) !== -1) {
                 currentSchedStoreId = selValue;
             } else if (currentSchedStoreId && validIds.indexOf(currentSchedStoreId) !== -1) {
@@ -5031,7 +5086,10 @@ function renderScheduleTable() {
             }
             storeSel.disabled = false;
         } else {
-            // 員工：鎖定為自己的主屬門市
+            // 店長/員工：鎖定為自己的門市
+            if (activeStores.length > 0 && validIds.indexOf(currentSchedStoreId) === -1) {
+                currentSchedStoreId = activeStores[0].id;
+            }
             storeSel.disabled = true;
         }
         
@@ -5708,6 +5766,16 @@ function renderEmployeePanel() {
     var employees = loadData('employees', defaultEmployees);
     var elem = document.getElementById('employeeListPanel');
     if (!elem) return;
+    
+    // 🔒 非管理員只看自家門市員工
+    if (!canViewAllStores()) {
+        var mySid = getUserStoreId();
+        if (mySid) {
+            employees = employees.filter(function(e) {
+                return !e.homeStoreId || e.homeStoreId === mySid;
+            });
+        }
+    }
     
     if (employees.length === 0) {
         elem.innerHTML = '<div style="color:#9ca3af; padding:5px; text-align:center;">尚無員工</div>';
@@ -6478,20 +6546,31 @@ function loadTransferStores() {
     if (!outSel || !inSel) return;
     
     var stores = loadData('stores', defaultStores);
-    var currentStoreId = loadData('currentStoreId', stores[0] && stores[0].id);
+    var isAdmin = canViewAllStores();
+    var mySid = getUserStoreId();
+    // 調出店預設：非管理員為自家門市
+    var currentStoreId = isAdmin ? loadData('currentStoreId', stores[0] && stores[0].id) : mySid;
     
     var outHtml = '<option value="">-- 請選擇調出店 --</option>';
-    var inHtml = '<option value="">-- 請選擇調入店 --</option>';
+    var inHtml = '<option value="">-- 請選擇調入店（可選他店）--</option>';
     for (var i = 0; i < stores.length; i++) {
         var s = stores[i];
-        var selOut = (s.id === currentStoreId) ? 'selected' : '';
-        outHtml += '<option value="' + s.id + '" ' + selOut + '>' + (s.code || '') + ' - ' + s.name + '</option>';
+        // 🔒 調出店：非管理員只能選自家
+        if (isAdmin || s.id === mySid) {
+            var selOut = (s.id === currentStoreId) ? 'selected' : '';
+            outHtml += '<option value="' + s.id + '" ' + selOut + '>' + (s.code || '') + ' - ' + s.name + '</option>';
+        }
+        // 調入店：所有門市都可選（含他店）
         inHtml += '<option value="' + s.id + '">' + (s.code || '') + ' - ' + s.name + '</option>';
     }
     outSel.innerHTML = outHtml;
     inSel.innerHTML = inHtml;
     
-    // 觸發顯示
+    // 🔒 非管理員鎖定調出店（一定是自家）
+    if (!isAdmin) {
+        outSel.disabled = true;
+    }
+    
     onTransferStoreChange('out');
 }
 
@@ -6735,6 +6814,8 @@ function saveTransferOrder() {
     msg += '📥 調入：' + (inStore.code || '') + ' ' + (inStore.name || '') + '\n';
     msg += '📦 品項數：' + _toCurrentItems.length + '\n';
     msg += '💰 成本合計：' + totalCost.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2}) + '\n\n';
+    msg += '📨 系統將自動傳送一份給「' + (inStore.name || '調入店') + '」\n';
+    msg += '   對方無需重新建檔，登入同步後即可看到並簽收。\n\n';
     msg += '🆕 要立即建立下一筆新的調撥單嗎？\n（按確定會清空目前資料，準備新單）';
     
     if (confirm(msg)) {
@@ -6903,6 +6984,19 @@ function renderTransferOrderHistory() {
         return (all[b].date || '').localeCompare(all[a].date || '');
     });
     
+    // 🔒 門市隔離：店長只看與自家相關的調撥（調出 OR 調入）
+    var mySid = getUserStoreId();
+    var myCode = getUserStoreCode();
+    var isAdmin = canViewAllStores();
+    if (!isAdmin) {
+        keys = keys.filter(function(k) {
+            var r = all[k];
+            var isOut = (r.outStoreId && r.outStoreId === mySid) || (myCode && String(r.outStoreCode) === String(myCode));
+            var isIn  = (r.inStoreId && r.inStoreId === mySid) || (myCode && String(r.inStoreCode) === String(myCode));
+            return isOut || isIn;
+        });
+    }
+    
     var tbody = document.getElementById('toHistoryBody');
     if (keys.length === 0) {
         tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; padding:30px; color:#9ca3af;">📭 尚無歷史記錄</td></tr>';
@@ -6926,9 +7020,23 @@ function renderTransferOrderHistory() {
         else if (hasOutSig || hasInSig) sigStatus = '<span class="status-tag" style="background:#fef3c7;color:#92400e;">⚠️ 缺一</span>';
         else sigStatus = '<span class="status-tag" style="background:#fee2e2;color:#991b1b;">❌ 未簽</span>';
         
+        // 🆕 方向標示（站在目前使用者門市的角度）
+        var dirTag = '';
+        if (!isAdmin) {
+            var iAmOut = (r.outStoreId && r.outStoreId === mySid) || (myCode && String(r.outStoreCode) === String(myCode));
+            var iAmIn  = (r.inStoreId && r.inStoreId === mySid) || (myCode && String(r.inStoreCode) === String(myCode));
+            if (iAmOut) dirTag = '<span class="status-tag" style="background:#fee2e2;color:#991b1b;margin-right:4px;">📤 調出</span>';
+            else if (iAmIn) {
+                // 調入：若尚未簽收，標示「待簽收」
+                dirTag = hasInSig 
+                    ? '<span class="status-tag" style="background:#dcfce7;color:#166534;margin-right:4px;">📥 調入</span>'
+                    : '<span class="status-tag" style="background:#fef3c7;color:#92400e;margin-right:4px;animation:pulse 1.5s infinite;">📥 待簽收</span>';
+            }
+        }
+        
         html += '<tr>';
         html += '<td><strong>' + (r.date || '-') + '</strong></td>';
-        html += '<td style="font-family:monospace;">' + r.orderNo + '</td>';
+        html += '<td style="font-family:monospace;">' + dirTag + r.orderNo + '</td>';
         html += '<td>' + (r.outStoreCode || '') + ' ' + (r.outStoreName || '-') + '</td>';
         html += '<td>' + (r.inStoreCode || '') + ' ' + (r.inStoreName || '-') + '</td>';
         html += '<td style="text-align:right;">' + ((r.items && r.items.length) || 0) + '</td>';
@@ -6936,7 +7044,11 @@ function renderTransferOrderHistory() {
         html += '<td style="text-align:center;">' + sigStatus + '</td>';
         html += '<td>';
         html += '<button class="btn-edit" style="padding:4px 10px; font-size:11px;" onclick="loadTransferOrderFromHistory(\'' + r.orderNo + '\')">📂 查看</button> ';
-        html += '<button class="btn-danger" style="padding:4px 10px; font-size:11px;" onclick="deleteTransferOrderRecord(\'' + r.orderNo + '\')">🗑️</button>';
+        // 🔒 只有 admin 或調出店可刪除（調入店不可刪除對方開的單）
+        var canDelete = isAdmin || (r.outStoreId && r.outStoreId === mySid) || (myCode && String(r.outStoreCode) === String(myCode));
+        if (canDelete) {
+            html += '<button class="btn-danger" style="padding:4px 10px; font-size:11px;" onclick="deleteTransferOrderRecord(\'' + r.orderNo + '\')">🗑️</button>';
+        }
         html += '</td>';
         html += '</tr>';
     }
@@ -7953,10 +8065,12 @@ function initInventoryReport() {
     var pd = document.getElementById('invPrintDate');
     if (pd) pd.textContent = formatDateTime(new Date());
     
-    var stores = loadData('stores', defaultStores);
+    var stores = getVisibleStores();
     if (stores.length > 0 && !document.getElementById('invStoreCode').value) {
-        document.getElementById('invStoreCode').value = stores[0].code || '';
-        document.getElementById('invStoreName').value = stores[0].name || '';
+        // 非管理員：用所屬門市
+        var targetStore = canViewAllStores() ? stores[0] : (stores.find(function(s){return s.id===getUserStoreId();}) || stores[0]);
+        document.getElementById('invStoreCode').value = targetStore.code || '';
+        document.getElementById('invStoreName').value = targetStore.name || '';
     }
     
     loadInventoryReport();
@@ -9707,8 +9821,8 @@ function initPurchaseReceipt() {
 function loadPurchaseStoreSelect() {
     var sel = document.getElementById('prStoreSelect');
     if (!sel) return;
-    var stores = loadData('stores', defaultStores);
-    var currentStoreId = loadData('currentStoreId', stores[0] && stores[0].id);
+    var stores = getVisibleStores();  // 🔒 只顯示可見門市
+    var currentStoreId = canViewAllStores() ? loadData('currentStoreId', stores[0] && stores[0].id) : getUserStoreId();
     
     var html = '<option value="">-- 請選擇門市 --</option>';
     for (var i = 0; i < stores.length; i++) {
@@ -9719,6 +9833,16 @@ function loadPurchaseStoreSelect() {
                 (s.area ? ' (' + s.area + ')' : '') + '</option>';
     }
     sel.innerHTML = html;
+    
+    // 🔒 非管理員鎖定門市選擇 + 自動帶入店號店名
+    if (!canViewAllStores()) {
+        sel.disabled = true;
+        var myStore = stores.find(function(s){ return s.id === getUserStoreId(); }) || stores[0];
+        if (myStore) {
+            if (document.getElementById('prStoreCode')) document.getElementById('prStoreCode').value = myStore.code || '';
+            if (document.getElementById('prStoreName')) document.getElementById('prStoreName').value = myStore.name || '';
+        }
+    }
 }
 
 function onPurchaseReceiptStoreChange() {
@@ -10665,8 +10789,9 @@ function loadStoreSelectForCashReport() {
     var sel = document.getElementById('crStoreSelect');
     if (!sel) return;
     
-    var stores = loadData('stores', defaultStores);
+    var stores = getVisibleStores();  // 🔒 只顯示可見門市
     var currentStoreId = loadData('currentStoreId', stores[0] && stores[0].id);
+    if (!canViewAllStores()) currentStoreId = getUserStoreId();  // 非管理員鎖定自家
     
     var html = '<option value="">-- 請選擇門市 --</option>';
     for (var i = 0; i < stores.length; i++) {
@@ -10677,6 +10802,8 @@ function loadStoreSelectForCashReport() {
                 (s.area ? ' (' + s.area + ')' : '') + '</option>';
     }
     sel.innerHTML = html;
+    // 非管理員：鎖定不可改
+    if (!canViewAllStores()) sel.disabled = true;
 }
 
 // 🏬 選擇門市時自動填入店號、店名
@@ -13244,12 +13371,66 @@ function resolveAbnormal(id) {
 
 // ============= 帳號管理 =============
 var defaultAccounts = [
-    { id: 'acc1', username: 'admin',     name: '系統管理員', role: 'admin',   password: '123456', createDate: '2024/01/01', status: 'active' },
-    { id: 'acc2', username: 'manager01', name: '店長範例',   role: 'manager', password: '123456', createDate: '2024/01/05', status: 'active' },
-    { id: 'acc3', username: 'deputy01',  name: '副店長範例', role: 'deputy',  password: '123456', createDate: '2024/01/07', status: 'active' },
-    { id: 'acc4', username: 'staff01',   name: '一般職員',   role: 'staff',   password: '123456', createDate: '2024/01/10', status: 'active' },
-    { id: 'acc5', username: 'user12345', name: '員工示範',   role: 'user',    password: '123456', createDate: '2024/01/15', status: 'active' }
+    { id: 'acc1', username: 'admin',     name: '系統管理員', role: 'admin',   password: '123456', createDate: '2024/01/01', status: 'active', storeId: '' },
+    { id: 'acc2', username: 'manager01', name: '店長範例',   role: 'manager', password: '123456', createDate: '2024/01/05', status: 'active', storeId: 'store1' },
+    { id: 'acc3', username: 'deputy01',  name: '副店長範例', role: 'deputy',  password: '123456', createDate: '2024/01/07', status: 'active', storeId: 'store1' },
+    { id: 'acc4', username: 'staff01',   name: '一般職員',   role: 'staff',   password: '123456', createDate: '2024/01/10', status: 'active', storeId: 'store1' },
+    { id: 'acc5', username: 'user12345', name: '員工示範',   role: 'user',    password: '123456', createDate: '2024/01/15', status: 'active', storeId: 'store1' }
 ];
+
+// ============= 🔒 門市資料隔離核心 =============
+// 取得目前使用者所屬門市 ID（admin 回傳 null = 可看全部）
+function getUserStoreId() {
+    if (!currentUser) return null;
+    if (currentUser.role === 'admin') return null;  // 管理員看全部
+    
+    var accounts = loadData('accounts', defaultAccounts);
+    var acc = accounts.find(function(a) { return a.username === currentUser.id; });
+    if (acc && acc.storeId) return acc.storeId;
+    
+    // fallback：從員工資料取 homeStoreId
+    var employees = loadData('employees', defaultEmployees);
+    var emp = employees.find(function(e) { return e.num === currentUser.id || e.name === currentUser.name; });
+    if (emp && emp.homeStoreId) return emp.homeStoreId;
+    
+    return null;
+}
+
+// 是否可看全部門市（僅管理員）
+function canViewAllStores() {
+    return !currentUser || currentUser.role === 'admin';
+}
+
+// 取得使用者所屬門市的 code（用於比對 storeCode 欄位）
+function getUserStoreCode() {
+    var sid = getUserStoreId();
+    if (!sid) return null;
+    var stores = loadData('stores', defaultStores);
+    var st = stores.find(function(s) { return s.id === sid; });
+    return st ? st.code : null;
+}
+
+// 判斷某筆資料的門市是否為使用者可見
+function canViewStoreData(dataStoreId, dataStoreCode) {
+    if (canViewAllStores()) return true;  // admin 全部可見
+    var mySid = getUserStoreId();
+    var myCode = getUserStoreCode();
+    if (mySid && dataStoreId && dataStoreId === mySid) return true;
+    if (myCode && dataStoreCode && String(dataStoreCode) === String(myCode)) return true;
+    // 兩者都沒有比對到 → 不可見
+    return false;
+}
+
+// 取得使用者可見的門市清單（admin = 全部；其他 = 僅自家）
+function getVisibleStores() {
+    var stores = loadData('stores', defaultStores);
+    if (canViewAllStores()) return stores;
+    var mySid = getUserStoreId();
+    if (!mySid) return stores;  // 找不到所屬門市則保守顯示全部
+    return stores.filter(function(s) { return s.id === mySid; });
+}
+
+
 
 function renderAccountList() {
     var accounts = loadData('accounts', defaultAccounts);
@@ -13261,20 +13442,37 @@ function renderAccountList() {
         return;
     }
     
-    var roleMap = { 'admin': '系統管理員', 'manager': '店長', 'user': '時薪人員' };
+    var roleMap = { 'admin': '系統管理員', 'manager': '店長', 'deputy': '副店長', 'staff': '店職員', 'user': '時薪人員' };
+    var stores = loadData('stores', defaultStores);
+    var storeMap = {};
+    stores.forEach(function(s) { storeMap[s.id] = s.name; });
     var html = '';
     for (var i = 0; i < accounts.length; i++) {
         var a = accounts[i];
         var statusHtml = a.status === 'active' 
             ? '<span class="status-tag status-done">啟用</span>'
             : '<span class="status-tag status-pending">停用</span>';
+        var storeName = a.role === 'admin' ? '🌐 全部' : (a.storeId ? ('🏬 ' + (storeMap[a.storeId] || '?')) : '（未指定）');
         var opBtn = currentUser && currentUser.role === 'admin'
             ? '<button class="btn-edit" onclick="openEditAccountModal(\'' + a.id + '\')">編輯</button> '
               + '<button class="' + (a.status === 'active' ? 'btn-danger' : 'btn-confirm') + '" style="padding:4px 10px;font-size:11px;" onclick="toggleAccountStatus(\'' + a.id + '\')">' + (a.status === 'active' ? '停用' : '啟用') + '</button>'
             : '-';
-        html += '<tr><td>' + a.username + '</td><td>' + a.name + '</td><td><span class="status-tag status-info">' + (roleMap[a.role] || a.role) + '</span></td><td>' + a.createDate + '</td><td>' + statusHtml + '</td><td>' + opBtn + '</td></tr>';
+        html += '<tr><td>' + a.username + '</td><td>' + a.name + '</td><td><span class="status-tag status-info">' + (roleMap[a.role] || a.role) + '</span></td><td style="font-size:12px;">' + storeName + '</td><td>' + statusHtml + '</td><td>' + opBtn + '</td></tr>';
     }
     tbody.innerHTML = html;
+}
+
+function fillAccountStoreOptions(selectedStoreId) {
+    var sel = document.getElementById('acctStore');
+    if (!sel) return;
+    var stores = loadData('stores', defaultStores);
+    var html = '<option value="">（不指定／全部）</option>';
+    for (var i = 0; i < stores.length; i++) {
+        var s = stores[i];
+        var selAttr = (s.id === selectedStoreId) ? ' selected' : '';
+        html += '<option value="' + s.id + '"' + selAttr + '>' + s.name + '（' + s.code + '）</option>';
+    }
+    sel.innerHTML = html;
 }
 
 function openAccountModal() {
@@ -13286,6 +13484,7 @@ function openAccountModal() {
     document.getElementById('acctPassword').value = '';
     document.getElementById('acctRole').value = 'user';
     document.getElementById('acctStatus').value = 'active';
+    fillAccountStoreOptions('');
     document.getElementById('accountModal').classList.remove('hidden');
 }
 
@@ -13301,6 +13500,7 @@ function openEditAccountModal(id) {
     document.getElementById('acctPassword').value = '';
     document.getElementById('acctRole').value = a.role;
     document.getElementById('acctStatus').value = a.status;
+    fillAccountStoreOptions(a.storeId || '');
     document.getElementById('accountModal').classList.remove('hidden');
 }
 
@@ -13309,6 +13509,7 @@ function saveAccount() {
     var u = document.getElementById('acctUsername').value.trim();
     var n = document.getElementById('acctName').value.trim();
     var p = document.getElementById('acctPassword').value.trim();
+    var storeId = document.getElementById('acctStore').value;
     if (!u || !n) return alert('⚠️ 請填寫帳號和姓名');
     
     var accounts = loadData('accounts', defaultAccounts);
@@ -13321,6 +13522,7 @@ function saveAccount() {
             accounts[idx].name = n;
             accounts[idx].role = document.getElementById('acctRole').value;
             accounts[idx].status = document.getElementById('acctStatus').value;
+            accounts[idx].storeId = storeId;
             if (p) accounts[idx].password = p;
         }
         showNotif('✅ 帳號已更新');
@@ -13334,6 +13536,7 @@ function saveAccount() {
             password: p || '123456',
             role: document.getElementById('acctRole').value,
             status: document.getElementById('acctStatus').value,
+            storeId: storeId,
             createDate: nowDateStr()
         });
         showNotif('✅ 帳號已新增（密碼：' + (p || '123456') + '）');
@@ -15580,7 +15783,7 @@ var defaultStores = [
 ];
 
 function renderStoreList() {
-    var stores = loadData('stores', defaultStores);
+    var stores = getVisibleStores();  // 🔒 非管理員只看自家
     var tbody = document.getElementById('storeListBody');
     if (!tbody) return;
     
@@ -15740,13 +15943,10 @@ function updateHeaderStore() {
         }
         if (!displayStore && stores.length > 0) displayStore = stores[0];
     } else if (currentUser) {
-        // 一般員工：顯示其主屬門市
-        var employees = loadData('employees', defaultEmployees);
-        var matchEmp = employees.find(function(e) {
-            return e.num === currentUser.id || e.name === currentUser.name;
-        });
-        if (matchEmp && matchEmp.homeStoreId) {
-            displayStore = stores.find(function(s) { return s.id === matchEmp.homeStoreId; });
+        // 一般員工/店長：顯示其所屬門市（優先用帳號 storeId）
+        var mySid = getUserStoreId();
+        if (mySid) {
+            displayStore = stores.find(function(s) { return s.id === mySid; });
         }
         if (!displayStore && stores.length > 0) displayStore = stores[0];
     }
