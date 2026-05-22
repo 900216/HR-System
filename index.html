@@ -15258,7 +15258,7 @@ var GH_SYNC_FILENAME = 'hr-system-data.json';
 
 // ============= 🔥 Firebase 即時資料庫同步（推薦：免Token、不撤銷、iOS相容）=============
 // 設定你的 Firebase Realtime Database 網址（例如 https://xxx-default-rtdb.firebaseio.com）
-var DEFAULT_FIREBASE_URL = '';  // ← 建立 Firebase 後填這裡，或在同步頁貼上
+var DEFAULT_FIREBASE_URL = 'https://hr-system-3ffcf-default-rtdb.asia-southeast1.firebasedatabase.app';  // ← 已內建
 
 function fbGetUrl() {
     var u = localStorage.getItem('_fb_url') || DEFAULT_FIREBASE_URL || '';
@@ -16369,10 +16369,11 @@ function manualPullFromCloud(silent) {
 
 // 自動推送（debounced）
 function autoPushDebounced() {
-    if (!_syncEnabled || localStorage.getItem('_cs_autoPush') === '0') return;
+    if (localStorage.getItem('_cs_autoPush') === '0') return;
     if (_syncPushTimer) clearTimeout(_syncPushTimer);
     _syncPushTimer = setTimeout(function() {
-        manualPushToCloud(true);
+        if (typeof cloudPush === 'function') cloudPush(true).catch(function(){});
+        else manualPushToCloud(true);
     }, 2000);
 }
 
@@ -16382,7 +16383,13 @@ function startAutoPull() {
     if (localStorage.getItem('_cs_autoPull') === '0') return;
     
     _syncPullInterval = setInterval(function() {
-        if (_syncEnabled) manualPullFromCloud(true);
+        if (typeof cloudPull === 'function') {
+            cloudPull(true).then(function() {
+                if (typeof refreshCurrentPage === 'function') refreshCurrentPage();
+            }).catch(function(){});
+        } else if (_syncEnabled) {
+            manualPullFromCloud(true);
+        }
     }, 30000);  // 每 30 秒
 }
 
@@ -16476,7 +16483,7 @@ window.saveData = function(key, value) {
         try { localStorage.setItem(key, typeof value === 'string' ? value : JSON.stringify(value)); } catch(e){}
     }
     // 觸發自動推送（限定備份範圍內的 key）
-    if (_syncEnabled && BACKUP_KEYS.indexOf(key) >= 0) {
+    if (BACKUP_KEYS.indexOf(key) >= 0 && (_syncEnabled || (typeof fbEnabled === 'function' && fbEnabled()))) {
         autoPushDebounced();
     }
 };
